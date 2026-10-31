@@ -1,0 +1,20 @@
+# Babashka / Clojure tooling
+.cpcache/
+.nrepl-port
+
+# Editor and linter caches; keep only your own clj-kondo settings
+.clj-kondo/*
+!.clj-kondo/config.edn
+.lsp/
+.zed/
+
+# Local settings: personal paths; its shape is documented in README.md
+/config.edn
+.env
+
+# Runtime output
+*.log
+processed.txt
+
+# macOS
+.DS_Store
