@@ -29,7 +29,7 @@ holds machine-specific paths, so create it yourself with this shape:
 | Key | Meaning |
 |---|---|
 | `:memo-dir` | Just Press Record's iCloud folder. Memos sit in date folders, e.g. `2026-10-31/11-23-32.m4a`. |
-| `:manifest` | Text file listing processed memos, one path per line relative to `:memo-dir` (e.g. `2026-10-31/11-23-32.m4a`). |
+| `:manifest` | Where Memo Router records processed memos. You only choose the path: the file and its folder are created on the first successful run, and each handled memo is appended as a path relative to `:memo-dir` (e.g. `2026-10-31/11-23-32.m4a`). Remove a line to have that memo processed again. |
 | `:settle-ms` | Skip memos modified more recently than this, so files still syncing from iCloud are picked up on a later run. |
 | `:whisper :bin` | Absolute path to the `mlx_whisper` command (`which mlx_whisper`). |
 | `:whisper :model` | Hugging Face model used for transcription. Downloaded on first use into `~/.cache/huggingface/hub/`. |
