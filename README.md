@@ -21,7 +21,9 @@ holds machine-specific paths, so create it yourself with this shape:
  :manifest  "/Users/<you>/Library/Application Support/memo-router/processed.txt"
  :settle-ms 60000
  :whisper   {:bin   "/Users/<you>/.local/bin/mlx_whisper"
-             :model "mlx-community/whisper-large-v3-turbo"}}
+             :model "mlx-community/whisper-large-v3-turbo"}
+ :reminders {:list "Inbox"}
+ :notes     {:account "iCloud" :folder "Notes"}}
 ```
 
 | Key | Meaning |
@@ -31,6 +33,13 @@ holds machine-specific paths, so create it yourself with this shape:
 | `:settle-ms` | Skip memos modified more recently than this, so files still syncing from iCloud are picked up on a later run. |
 | `:whisper :bin` | Absolute path to the `mlx_whisper` command (`which mlx_whisper`). |
 | `:whisper :model` | Hugging Face model used for transcription. Downloaded on first use into `~/.cache/huggingface/hub/`. |
+| `:reminders :list` | Optional. Reminders list for memos classified as reminders. Must match an existing list name exactly; omit it to use your default list. |
+| `:notes :account` | Recommended. Notes account (e.g. `"iCloud"`) that notes are created in. Omit it to use Notes' default account, but that can change when accounts are added or the setting changes, so name it explicitly if you have work or client accounts. |
+| `:notes :folder` | Optional. Folder within that account for everything else. Must match an existing folder name exactly; omit it to use the account's default folder. Folder names can repeat across accounts, which is why the lookup is scoped to one account. |
+
+Reminders and Notes are driven through `/usr/bin/osascript`, which is part of
+macOS, so it needs no configuration. Both `:reminders` and `:notes` accept an
+optional `:bin` that overrides that path; the tests use it to substitute a fake.
 
 Use absolute paths throughout: launchd runs with a minimal environment, so `~`
 and `$HOME` are not expanded. Keep API keys out of this file and set them as
