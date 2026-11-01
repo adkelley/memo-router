@@ -12,7 +12,7 @@
 (defn reminder-command [config {:keys [title body]}]
   (let [bin (:bin config "/usr/bin/osascript")
         list (:list config "")]
-    (vector bin "-l" "JavaScript" "-e" script list title (or body ""))))
+    [bin "-l" "JavaScript" "-e" script list title (or body "")]))
 
 (defn add-reminder!
   "Adds reminder (:title, :body) to the Reminders list named by (:list config),
