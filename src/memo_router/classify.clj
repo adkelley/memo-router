@@ -21,7 +21,6 @@
       (str/replace reminder-pattern "")
       clean-title))
 
-
 (defn note-title [text]
   (-> (str/split text #"(?<=[.!?])\s+")
       first

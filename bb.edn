@@ -1,6 +1,8 @@
 {:paths ["src" "test"]
  :tasks {process {:doc  "Process new memos"
                   :task (exec 'memo-router.core/-main)}
-         test {:doc         "Run tests"
-               :extra-paths ["scripts"]
-               :task        (exec 'memo-router.test-runner/-main)}}}
+         fmt     {:doc "Format code"
+                  :task (shell "cljfmt" "fix" "src" "test" "scripts")}
+         test    {:doc         "Run tests"
+                  :extra-paths ["scripts"]
+                  :task        (exec 'memo-router.test-runner/-main)}}}
