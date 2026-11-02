@@ -3,6 +3,8 @@
                   :task (exec 'memo-router.core/-main)}
          fmt     {:doc "Format code"
                   :task (shell "cljfmt" "fix" "src" "test" "scripts")}
+         lint    {:doc "Run linter"
+                  :task (shell "clj-kondo" "--lint" "src" "test" "scripts")}
          test    {:doc         "Run tests"
                   :extra-paths ["scripts"]
                   :task        (exec 'memo-router.test-runner/-main)}}}
