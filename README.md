@@ -51,5 +51,19 @@ environment variables.
 bb process
 ```
 
+| Option | Meaning |
+|---|---|
+| `--config-path <path>` | Config file to read. Defaults to `config.edn` in the current directory; launchd should pass an absolute path, since its working directory is not the project. |
+| `--dry-run` | Transcribe and classify new memos and log what would happen, but create no reminders or notes and leave the manifest untouched. Use it to check a new setup or config change against real memos. |
+
+```bash
+bb process --dry-run
+bb process --config-path "/Users/<you>/code/memo-router/config.edn"
+```
+
+Run `bb process --dry-run` before the first real run: it exercises the whole
+pipeline on your memos without changing anything, so nothing needs undoing if
+the routing is not what you expected.
+
 For development, start a REPL with `rlwrap bb repl` and reload a namespace
 after saving with `(require 'memo-router.core :reload)`.
