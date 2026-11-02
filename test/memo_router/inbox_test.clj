@@ -28,10 +28,10 @@
       (is (= ["2026-10-31/08-00-00.m4a"
               "2026-10-31/11-23-32.m4a"
               "2026-11-01/09-15-00.m4a"]
-             (inbox/memo-files dir)))))
+             (#'inbox/memo-files dir)))))
 
   (testing "returns an empty sequence for a missing folder"
-    (is (empty? (inbox/memo-files "/no/such/memo-router/dir")))))
+    (is (empty? (#'inbox/memo-files "/no/such/memo-router/dir")))))
 
 (deftest settled?-test
   (fs/with-temp-dir [dir {}]
@@ -40,13 +40,13 @@
     (touch! dir "fresh.m4a" (- now-ms 1000))
 
     (testing "true once the file is older than settle-ms"
-      (is (true? (inbox/settled? dir "old.m4a" now-ms settle-ms))))
+      (is (true? (#'inbox/settled? dir "old.m4a" now-ms settle-ms))))
 
     (testing "true at exactly settle-ms"
-      (is (true? (inbox/settled? dir "edge.m4a" now-ms settle-ms))))
+      (is (true? (#'inbox/settled? dir "edge.m4a" now-ms settle-ms))))
 
     (testing "false while the file may still be syncing"
-      (is (false? (inbox/settled? dir "fresh.m4a" now-ms settle-ms))))))
+      (is (false? (#'inbox/settled? dir "fresh.m4a" now-ms settle-ms))))))
 
 (deftest new-memos-test
   (fs/with-temp-dir [dir {}]
