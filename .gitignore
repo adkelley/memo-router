@@ -11,6 +11,8 @@
 # Local settings: personal paths; its shape is documented in README.md
 /config.edn
 .env
+# Filled-in LaunchAgents hold your username; commit the .template instead
+/launchd/*.plist
 
 # Runtime output
 *.log

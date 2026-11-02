@@ -53,7 +53,7 @@ bb process
 
 | Option | Meaning |
 |---|---|
-| `--config-path <path>` | Config file to read. Defaults to `config.edn` in the current directory; launchd should pass an absolute path, since its working directory is not the project. |
+| `--config-path <path>` | Config file to read. Defaults to `config.edn` in the current directory. The launchd job passes an absolute path so it never depends on where it runs from. |
 | `--dry-run` | Transcribe and classify new memos and log what would happen, but create no reminders or notes and leave the manifest untouched. Use it to check a new setup or config change against real memos. |
 
 ```bash
@@ -67,3 +67,60 @@ the routing is not what you expected.
 
 For development, start a REPL with `rlwrap bb repl` and reload a namespace
 after saving with `(require 'memo-router.core :reload)`.
+
+## Running automatically
+
+[`launchd/memo-router.plist.template`](launchd/memo-router.plist.template)
+describes a per-user LaunchAgent that runs `bb process` every 5 minutes, and
+once when it is loaded; the comments in the file explain each setting.
+launchd does not expand `~`, so the template's `{{home}}` and `{{project}}`
+placeholders are replaced with absolute paths when you install it. The
+filled-in copy holds your username, so it lives only in
+`~/Library/LaunchAgents/` and `launchd/*.plist` is git-ignored.
+
+Before installing, run `bb process` once by hand so macOS asks for the
+Automation permissions (Reminders and Notes) while you are at the keyboard.
+The first scheduled run may ask again for `bb` itself, and possibly for
+access to iCloud Drive; allow these too, or the job will fail in the log.
+
+Install and start it:
+
+```bash
+sed -e "s|{{home}}|$HOME|g" -e "s|{{project}}|$PWD|g" \
+  launchd/memo-router.plist.template > ~/Library/LaunchAgents/local.memo-router.plist
+plutil -lint ~/Library/LaunchAgents/local.memo-router.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.memo-router.plist
+```
+
+Run these from the project folder, since `$PWD` becomes `{{project}}`.
+
+Check on it (`last exit code = 0` means the last run succeeded) and read the log:
+
+```bash
+launchctl print gui/$(id -u)/local.memo-router | grep -E "state|last exit code"
+tail -f ~/Library/Logs/memo-router.log
+```
+
+Run it now instead of waiting for the next interval:
+
+```bash
+launchctl kickstart gui/$(id -u)/local.memo-router
+```
+
+After editing the template, fill it in again with the `sed` command above,
+then reload it:
+
+```bash
+launchctl bootout gui/$(id -u)/local.memo-router
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.memo-router.plist
+```
+
+Stop and remove it:
+
+```bash
+launchctl bootout gui/$(id -u)/local.memo-router
+rm ~/Library/LaunchAgents/local.memo-router.plist
+```
+
+Changes to `config.edn` or the code need no reload: each run starts a fresh
+`bb` process that reads them.

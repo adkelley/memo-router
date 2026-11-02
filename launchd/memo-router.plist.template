@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Template for a per-user LaunchAgent that runs memo-router every 5 minutes.
+
+  Placeholders, filled in by the install command in the README:
+    {{home}}     your home folder, e.g. /Users/you
+    {{project}}  this project's folder, e.g. /Users/you/code/memo-router
+
+  launchd does not expand ~ or $HOME, so the filled-in file must contain
+  absolute paths. Filled-in copies (*.plist) are git-ignored because they
+  hold your username and folder layout.
+-->
+<plist version="1.0">
+<dict>
+  <!-- Unique name for the job; launchctl commands refer to it by this. -->
+  <key>Label</key>
+  <string>local.memo-router</string>
+
+  <!-- The command: bb process, given the absolute config path. bb finds the
+       process task in bb.edn in WorkingDirectory. (XML comments cannot
+       contain two hyphens in a row, so the flag is not spelled out here.)
+       /opt/homebrew/bin/bb is where Homebrew installs bb on Apple Silicon. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/bin/bb</string>
+    <string>process</string>
+    <string>--config-path</string>
+    <string>{{project}}/config.edn</string>
+  </array>
+
+  <!-- Run from the project so bb.edn (and src/ on its classpath) is found. -->
+  <key>WorkingDirectory</key>
+  <string>{{project}}</string>
+
+  <!-- Every 300 seconds. launchd never starts a second copy while one is
+       still running, and runs once on wake if a run was missed during sleep. -->
+  <key>StartInterval</key>
+  <integer>300</integer>
+
+  <!-- Also run once as soon as the job is loaded (at install and at login),
+       so a new setup is exercised straight away. -->
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- launchd starts jobs with a minimal PATH. mlx_whisper (~/.local/bin)
+       calls ffmpeg (/opt/homebrew/bin) by name, so both must be here. -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>{{home}}/.local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <!-- Everything memo-router prints (memo names, outcomes, errors; never
+       transcripts) is appended here. -->
+  <key>StandardOutPath</key>
+  <string>{{home}}/Library/Logs/memo-router.log</string>
+  <key>StandardErrorPath</key>
+  <string>{{home}}/Library/Logs/memo-router.log</string>
+</dict>
+</plist>
