@@ -21,10 +21,16 @@
       (str/replace reminder-pattern "")
       clean-title))
 
+(def ^:private max-title-words 8)
 (defn note-title [text]
-  (-> (str/split text #"(?<=[.!?])\s+")
-      first
-      clean-title))          ; strip end punctuation, trim, capitalise
+  (let [words (->> (str/split text #"(?<=[.!?])\s+")
+                    first
+                    clean-title
+                    (re-seq #"\S+"))   ; words, ignoring extra or leading whitespace
+        title (str/join " " (take max-title-words words))]
+  (if (> (count words) max-title-words)
+      (str title "...")
+      title)))
 
 (defn classify [text]
   (cond

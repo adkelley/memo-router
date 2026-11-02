@@ -77,6 +77,11 @@ deleting a reminder by mistake or switching to a better model.
 - Replace the keyword rules with an API behind the same `classify` function
   and return shape: OpenAI Decisions API, TypeSafe Jev, or an LLM such as
   Claude
+- With an LLM, generate a short summary heading for notes (e.g. "Group wiki
+  memos by project") instead of the first sentence. Spoken memos often come
+  through as one long sentence, so today's `note-title` is capped at a few
+  words and cut off with "…", which is the start of the memo rather than a
+  summary
 - With an LLM, also correct transcription errors in `:title` and `:body` from
   context (e.g. "foreclosure" → "for Clojure"), instead of maintaining word
   lists

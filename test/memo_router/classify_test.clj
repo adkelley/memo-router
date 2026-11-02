@@ -44,7 +44,25 @@
 
   (testing "keeps a full stop inside the sentence"
     (is (= "Upgrade to Babashka v1.13"
-           (classify/note-title "Upgrade to Babashka v1.13. It has new fs functions.")))))
+           (classify/note-title "Upgrade to Babashka v1.13. It has new fs functions."))))
+
+  (testing "caps the title at 8 words, adding ... only when words were cut"
+    (are [text title] (= title (classify/note-title text))
+      ;; exactly 8 words: the boundary, left whole
+      "Idea for the wiki group memos by project."
+      "Idea for the wiki group memos by project"
+
+      ;; one long spoken sentence, as Whisper often produces
+      "idea for the wiki we could group memos by project and maybe use tags"
+      "Idea for the wiki we could group memos..."
+
+      ;; a long first sentence followed by more sentences
+      "We could group memos by project and tag each one. Then search by tag."
+      "We could group memos by project and tag..."
+
+      ;; extra whitespace does not count as words
+      "  Idea   for the   wiki  "
+      "Idea for the wiki")))
 
 (deftest classify-test
   (testing "a reminder carries its title and the full transcript as :body"
