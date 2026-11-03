@@ -1,0 +1,29 @@
+# Checks formatting, lints, and runs the tests on every push and pull request.
+# Linux is enough: the tests replace mlx_whisper and osascript with /bin/sh
+# fakes, so nothing here needs macOS, MLX, Reminders or Notes.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: DeLaGuardo/setup-clojure@13.7.0
+        with:
+          bb: latest
+          clj-kondo: latest
+          cljfmt: latest
+
+      - name: Check formatting
+        run: cljfmt check src test scripts
+
+      - name: Lint
+        run: bb lint
+
+      - name: Test
+        run: bb test
