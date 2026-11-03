@@ -1,5 +1,16 @@
 {:paths ["src" "test"]
- :tasks {process {:doc  "Process new memos"
+ :tasks {:requires ([babashka.fs :as fs]
+                    [clojure.string :as str])
+         ;; :init runs before every task, so domain is a function: only the
+         ;; agent tasks pay for the id -u call.
+         :init (do (def label "local.memo-router")
+                   (def plist (str (fs/home) "/Library/LaunchAgents/" label ".plist"))
+                   (def log-file (str (fs/home) "/Library/Logs/memo-router.log"))
+                   (defn domain []
+                     (str "gui/" (str/trim (:out (shell {:out :string} "id" "-u")))))
+                   (defn service [] (str (domain) "/" label)))
+
+         process {:doc  "Process new memos"
                   :task (exec 'memo-router.core/-main)}
          fmt     {:doc "Format code"
                   :task (shell "cljfmt" "fix" "src" "test" "scripts")}
@@ -7,4 +18,20 @@
                   :task (shell "clj-kondo" "--lint" "src" "test" "scripts")}
          test    {:doc         "Run tests"
                   :extra-paths ["scripts"]
-                  :task        (exec 'memo-router.test-runner/-main)}}}
+                  :task        (exec 'memo-router.test-runner/-main)}
+
+         agent:start  {:doc  "Load the LaunchAgent (runs now, then every 5 minutes)"
+                       :task (shell "launchctl" "bootstrap" (domain) plist)}
+         agent:stop   {:doc  "Unload the LaunchAgent until agent:start or next login"
+                       :task (shell "launchctl" "bootout" (service))}
+         agent:run    {:doc  "Run the LaunchAgent now instead of waiting"
+                       :task (shell "launchctl" "kickstart" (service))}
+         agent:status {:doc  "Show the LaunchAgent's state and last exit code"
+                       :task (->> (shell {:out :string} "launchctl" "print" (service))
+                                  :out
+                                  str/split-lines
+                                  ;; bb.edn is EDN, which has no #() or #"" literals
+                                  (filter (fn [line] (re-find (re-pattern "^\t(state|last exit code) ") line)))
+                                  (run! println))}
+         agent:log    {:doc  "Follow the log (Ctrl-C to stop)"
+                       :task (shell "tail" "-f" log-file)}}}

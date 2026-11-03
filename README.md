@@ -108,44 +108,47 @@ Automation permissions (Reminders and Notes) while you are at the keyboard.
 The first scheduled run may ask again for `bb` itself, and possibly for
 access to iCloud Drive; allow these too, or the job will fail in the log.
 
-Install and start it:
+Install it once by filling in the template, from the project folder (`$PWD`
+becomes `{{project}}`):
 
 ```bash
 sed -e "s|{{home}}|$HOME|g" -e "s|{{project}}|$PWD|g" \
   launchd/memo-router.plist.template > ~/Library/LaunchAgents/local.memo-router.plist
 plutil -lint ~/Library/LaunchAgents/local.memo-router.plist
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.memo-router.plist
 ```
 
-Run these from the project folder, since `$PWD` becomes `{{project}}`.
+Then manage it with the `agent:` tasks in `bb.edn` (`bb tasks` lists them):
 
-Check on it (`last exit code = 0` means the last run succeeded) and read the log:
+| Task | Does |
+|---|---|
+| `bb agent:start` | Load the job; it runs now and then every 5 minutes |
+| `bb agent:stop` | Unload it until `agent:start` or your next login |
+| `bb agent:run` | Run it now instead of waiting for the next interval |
+| `bb agent:status` | Show its state; `last exit code = 0` means the last run succeeded |
+| `bb agent:log` | Follow the log (Ctrl-C stops following, not the job) |
 
-```bash
-launchctl print gui/$(id -u)/local.memo-router | grep -E "state|last exit code"
-tail -f ~/Library/Logs/memo-router.log
-```
-
-Run it now instead of waiting for the next interval:
-
-```bash
-launchctl kickstart gui/$(id -u)/local.memo-router
-```
+The log records memo names, outcomes and errors; runs that find no new memos
+write nothing.
 
 After editing the template, fill it in again with the `sed` command above,
-then reload it:
+then reload it with `bb agent:stop` and `bb agent:start`.
+
+To remove it, stop it and delete the plist:
 
 ```bash
-launchctl bootout gui/$(id -u)/local.memo-router
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.memo-router.plist
-```
-
-Stop and remove it:
-
-```bash
-launchctl bootout gui/$(id -u)/local.memo-router
+bb agent:stop
 rm ~/Library/LaunchAgents/local.memo-router.plist
 ```
 
 Changes to `config.edn` or the code need no reload: each run starts a fresh
 `bb` process that reads them.
+
+The tasks wrap these `launchctl` commands, if you need them directly:
+
+```bash
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.memo-router.plist
+launchctl bootout gui/$(id -u)/local.memo-router
+launchctl kickstart gui/$(id -u)/local.memo-router
+launchctl print gui/$(id -u)/local.memo-router
+tail -f ~/Library/Logs/memo-router.log
+```
