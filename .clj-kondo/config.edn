@@ -1,0 +1,3 @@
+;; fs/with-temp-dir binds a symbol like let. Locally clj-kondo learns this from
+;; .clj-kondo/imports/, which is git-ignored, so CI needs it spelled out here.
+{:lint-as {babashka.fs/with-temp-dir clojure.core/let}}
