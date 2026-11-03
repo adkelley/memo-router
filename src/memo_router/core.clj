@@ -60,7 +60,8 @@
     (when dry-run
       (println "dry-run mode: no changes will be made"))
     (let [tally (reduce (partial tally-memo config dry-run) {} memos)]
-      (println "processed:" (count memos) "memos" tally)
+      (when (seq memos)
+        (println "processed:" (count memos) "memos" tally))
       tally)))
 
 (defn -main
