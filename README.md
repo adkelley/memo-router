@@ -23,7 +23,10 @@ holds machine-specific paths, so create it yourself with this shape:
  :whisper   {:bin   "/Users/<you>/.local/bin/mlx_whisper"
              :model "mlx-community/whisper-large-v3-turbo"}
  :reminders {:list "Inbox"}
- :notes     {:account "iCloud" :folder "Notes"}}
+ :notes     {:account "iCloud"
+             :folder  "Notes"
+             :routes  {"Work" {:account "Work"}
+                       "Acme" {:account "Acme Corp" :folder "Memos"}}}}
 ```
 
 | Key | Meaning |
@@ -36,6 +39,7 @@ holds machine-specific paths, so create it yourself with this shape:
 | `:reminders :list` | Optional. Reminders list for memos classified as reminders. Must match an existing list name exactly; omit it to use your default list. |
 | `:notes :account` | Recommended. Notes account (e.g. `"iCloud"`) that notes are created in. Omit it to use Notes' default account, but that can change when accounts are added or the setting changes, so name it explicitly if you have work or client accounts. |
 | `:notes :folder` | Optional. Folder within that account for everything else. Must match an existing folder name exactly; omit it to use the account's default folder. Folder names can repeat across accounts, which is why the lookup is scoped to one account. |
+| `:notes :routes` | Optional. Map of spoken keyword to destination, `{:account "..." :folder "..."}`, for sending a note to another account (see [Routing notes to an account](#routing-notes-to-an-account)). `:account` is required. Without `:folder`, the note goes to that account's default folder, not the top-level `:folder`. |
 
 Reminders and Notes are driven through `/usr/bin/osascript`, which is part of
 macOS, so it needs no configuration. Both `:reminders` and `:notes` accept an
@@ -67,6 +71,27 @@ the routing is not what you expected.
 
 For development, start a REPL with `rlwrap bb repl` and reload a namespace
 after saving with `(require 'memo-router.core :reload)`.
+
+### Routing notes to an account
+
+Start a note memo with a keyword from `:notes :routes` to send it to that
+account, e.g. "Acme note: call the auditor about Q3." The keyword is matched
+at the start of the transcript, ignoring case, optionally followed by "note"
+and `:`, `,` or `.`, and is left out of the note's title. When several
+keywords match, the longest wins: with keys "Acme" and "Acme Corp", "Acme
+Corp: …" uses the "Acme Corp" route. A note with no
+keyword goes to the top-level `:account` and `:folder`. Reminders are not
+routed: "Acme, remind me to …" becomes an Acme note, because the reminder
+phrase must open the memo.
+
+Account names must match exactly; list them with:
+
+```bash
+osascript -l JavaScript -e 'Application("Notes").accounts.name()'
+```
+
+Whisper may spell a keyword differently than you expect (e.g. "A.D.K."), so
+add aliases as extra keys pointing to the same destination.
 
 ## Running automatically
 

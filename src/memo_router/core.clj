@@ -21,7 +21,10 @@
   [config {:keys [type] :as memo}]
   (case type
     :reminder (reminders/add-reminder! (:reminders config) memo)
-    :note (notes/add-note! (:notes config) memo)))
+    :note (notes/add-note! (if-let [destination (:destination memo)]
+                             (merge (select-keys (:notes config) [:bin]) destination)
+                             (:notes config))
+                           memo)))
 
 (defn process-memo!
   "Transcribes, classifies, and routes one memo, then marks it processed.
@@ -32,7 +35,7 @@
     (if (str/blank? transcript)
       (do (when-not dry-run (manifest/mark-processed! manifest rel-path))
           :skipped)
-      (let [{:keys [type] :as memo} (classify/classify transcript)]
+      (let [{:keys [type] :as memo} (classify/classify (get-in config [:notes :routes]) transcript)]
         (when-not dry-run
           (route! config memo)
           (manifest/mark-processed! manifest rel-path))

@@ -69,10 +69,10 @@
     (is (= {:type  :reminder
             :title "Look into Ring software for Clojure"
             :body  "Remind me to look into Ring software for Clojure."}
-           (classify/classify "Remind me to look into Ring software for Clojure."))))
+           (classify/classify nil "Remind me to look into Ring software for Clojure."))))
 
   (testing "anything else is a note"
     (is (= {:type  :note
             :title "Idea: group memos by project"
             :body  "Idea: group memos by project. Maybe use tags."}
-           (classify/classify "Idea: group memos by project. Maybe use tags.")))))
+           (classify/classify nil "Idea: group memos by project. Maybe use tags.")))))
