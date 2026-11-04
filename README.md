@@ -93,6 +93,48 @@ osascript -l JavaScript -e 'Application("Notes").accounts.name()'
 Whisper may spell a keyword differently than you expect (e.g. "A.D.K."), so
 add aliases as extra keys pointing to the same destination.
 
+### Due dates on reminders
+
+A reminder that mentions a date or time gets a due date, and the phrase is left
+out of its title: "Remind me to call Dana tomorrow at 3" becomes "Call Dana",
+due tomorrow at 15:00. The reminder's notes keep the full transcript. Dates in
+notes are left alone.
+
+Phrases are read relative to when the memo was recorded, taken from its file
+name, not when it was processed. A memo recorded on Monday night that is
+processed on Tuesday still treats "tomorrow" as Tuesday.
+
+| Say | Due |
+|---|---|
+| `today`, `tomorrow` | That day, all-day |
+| `Friday`, `on Friday`, `this Friday`, `next Friday` | The next Friday after the memo's date, all-day. Said on a Friday, this is a week away. |
+| `in 2 hours`, `in 30 minutes`, `in an hour` | That long after the memo was recorded. Numbers can be digits or words up to twelve. |
+| `in 3 days` | That day, all-day |
+| `morning`, `afternoon`, `evening`, `night` after a date, e.g. `tomorrow morning` | That day at 09:00, 14:00, 18:00 or 20:00 |
+| `tonight`, `this afternoon`, `in the morning` | The same times, on the next day that time is still ahead |
+| `at 3 pm`, `at 3:30 p.m.`, `at 4.55 pm` | That time on the date spoken. With no date, today if it is still ahead, otherwise tomorrow. |
+| `at 3`, `at 3:30` | See below |
+
+For an hour with no am or pm, Memo Router finds the first day on which 3:00 or
+15:00 is still ahead, and if both are, takes the one between 07:00 and 18:59. A
+part of the day decides it instead, so "tomorrow evening at 8" is 20:00.
+
+| Recorded | Said | Due |
+|---|---|---|
+| Monday 10:00 | at 3 | Monday 15:00 |
+| Monday 10:00 | at 9 | Monday 21:00 |
+| Monday 16:00 | at 3 | Tuesday 15:00 |
+| Monday 10:00 | tomorrow at 9 | Tuesday 09:00 |
+
+To avoid reading numbers as times, an hour with no am or pm counts only before
+the end of a sentence, punctuation, or "to". "Remind me to look at 3 options"
+gets no time, and neither does "tomorrow at 3 with Dana", which is all-day
+tomorrow with "at 3" left in the title. Say "3 pm" to be certain.
+
+Only the first date in a memo is used; a second one stays in the title.
+Recurring phrases such as "every Friday" are not supported and are treated as
+the next Friday.
+
 ## Running automatically
 
 [`launchd/memo-router.plist.template`](launchd/memo-router.plist.template)

@@ -3,7 +3,8 @@
    [babashka.fs :as fs]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [memo-router.reminders :as reminders]))
+   [memo-router.reminders :as reminders])
+  (:import (java.time LocalDate LocalDateTime)))
 
 (def reminder {:title "Take out the trash" :body "Remind me to take out the trash."})
 
@@ -40,6 +41,21 @@
   (testing "passes \"\" for a missing list or body, so the default list is used"
     (is (= ["" "Take out the trash" ""]
            (drop 5 (reminders/reminder-command {} {:title "Take out the trash"})))))
+
+  (testing "leaves out the due arguments when there is no :due"
+    (is (= 3 (count (drop 5 (reminders/reminder-command {:list "Inbox"} reminder))))))
+
+  (testing "a timed reminder passes the date-time, and false for all-day"
+    (is (= ["2026-11-03T15:00" "false"]
+           (take-last 2 (reminders/reminder-command
+                         {:list "Inbox"}
+                         (assoc reminder :due (LocalDateTime/of 2026 11 3 15 0)))))))
+
+  (testing "an all-day reminder passes midnight, since JavaScript reads a date alone as UTC"
+    (is (= ["2026-11-03T00:00" "true"]
+           (take-last 2 (reminders/reminder-command
+                         {:list "Inbox"}
+                         (assoc reminder :due (LocalDate/of 2026 11 3)))))))
 
   (testing ":bin overrides the osascript path"
     (is (= "/tmp/fake" (first (reminders/reminder-command {:bin "/tmp/fake"} reminder))))))

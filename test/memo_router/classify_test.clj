@@ -1,7 +1,8 @@
 (ns memo-router.classify-test
   (:require
    [clojure.test :refer [are deftest is testing]]
-   [memo-router.classify :as classify]))
+   [memo-router.classify :as classify])
+  (:import (java.time LocalDate LocalDateTime)))
 
 (deftest reminder?-test
   (testing "true when the transcript starts with a trigger phrase, any case"
@@ -64,15 +65,40 @@
       "  Idea   for the   wiki  "
       "Idea for the wiki")))
 
+(def now (LocalDateTime/of 2026 11 2 10 0))
+
 (deftest classify-test
   (testing "a reminder carries its title and the full transcript as :body"
     (is (= {:type  :reminder
             :title "Look into Ring software for Clojure"
             :body  "Remind me to look into Ring software for Clojure."}
-           (classify/classify nil "Remind me to look into Ring software for Clojure."))))
+           (classify/classify nil now "Remind me to look into Ring software for Clojure."))))
 
   (testing "anything else is a note"
     (is (= {:type  :note
             :title "Idea: group memos by project"
             :body  "Idea: group memos by project. Maybe use tags."}
-           (classify/classify nil "Idea: group memos by project. Maybe use tags.")))))
+           (classify/classify nil now "Idea: group memos by project. Maybe use tags."))))
+
+  (testing "a reminder with a time gets :due, and its title omits the phrase"
+    (is (= {:type  :reminder
+            :title "Call Dana"
+            :body  "Remind me to call Dana tomorrow at 3."
+            :due   (LocalDateTime/of 2026 11 3 15 0)}
+           (classify/classify nil now "Remind me to call Dana tomorrow at 3."))))
+
+  (testing "a reminder with only a date gets a LocalDate, meaning all-day"
+    (is (= {:type  :reminder
+            :title "Stretch"
+            :body  "Remind me tomorrow to stretch."
+            :due   (LocalDate/of 2026 11 3)}
+           (classify/classify nil now "Remind me tomorrow to stretch."))))
+
+  (testing "the title keeps the phrase when nothing else is left"
+    (is (= "Tomorrow" (:title (classify/classify nil now "Remind me tomorrow.")))))
+
+  (testing "a note never gets :due"
+    (is (= {:type  :note
+            :title "Idea for tomorrow: group memos"
+            :body  "Idea for tomorrow: group memos."}
+           (classify/classify nil now "Idea for tomorrow: group memos.")))))

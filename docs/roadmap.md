@@ -13,7 +13,10 @@ Each stage works on its own and has tests that mock its external tool.
 - `whisper` – transcribe a memo with `mlx_whisper` into a trimmed string
 - `classify` – keyword rules turn a transcript into
   `{:type :reminder|:note :title … :body …}`
-- `reminders` – create a reminder in a named list through `osascript`
+- `due` – read dates and times from a reminder's transcript, relative to the
+  memo's recording time, and remove the phrase from its title
+- `reminders` – create a reminder in a named list through `osascript`, timed
+  or all-day when it has a due date
 - `notes` – create a note as escaped HTML in a named account and folder
 - Test runner (`bb test`) and formatter task (`bb fmt`)
 
@@ -85,8 +88,16 @@ deleting a reminder by mistake or switching to a better model.
 - With an LLM, also correct transcription errors in `:title` and `:body` from
   context (e.g. "foreclosure" → "for Clojure"), instead of maintaining word
   lists
-- Extract due dates for reminders ("Thursday afternoon") and pass them to the
-  Reminders script as a `dueDate`
+- With an LLM, read due dates from context, filling the same `:due` slot as
+  `due/extract-due`. An LLM could also fill the `:destination` slot for notes
+- Route reminders to lists by spoken prefix, as notes are routed to accounts
+
+### Due dates
+
+- A smarter `next <weekday>`: said on a Monday, "next Friday" could mean the
+  Friday of next week rather than this one
+- Spelled-out hours ("at three"), if transcripts turn out to need them
+- Recurring reminders ("every Friday")
 
 ### Robustness
 

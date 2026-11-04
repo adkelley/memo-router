@@ -1,5 +1,6 @@
 (ns memo-router.classify
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [memo-router.due :as due]))
 
 (def reminder-pattern #"(?i)^\s*(remind me( to)?|reminder:?|don[’']t forget( to)?)\b:?\s*")
 
@@ -48,12 +49,18 @@
 
 (defn classify
   "Classifies a transcript as a reminder or a note, returning
-  {:type :title :body}. A note that starts with a keyword from routes (see
-  note-route) also gets :destination, and its title omits the keyword.
-  routes may be nil."
-  [routes text]
+   {:type :title :body}. A reminder with a date or time phrase (see
+   due/extract-due, read relative to now) also gets :due, and its title omits
+   the phrase. A note that starts with a keyword from routes (see note-route)
+   also gets :destination, and its title omits the keyword. routes may be nil."
+  [routes now text]
   (if (reminder? text)
-    {:type :reminder :title (reminder-title text) :body text}
+    (let [{:keys [due] :as found} (due/extract-due now text)
+          title (reminder-title (:text found text))]
+      (cond-> {:type :reminder
+               :title (if (str/blank? title) (reminder-title text) title)
+               :body text}
+        due (assoc :due due)))
     (let [{:keys [destination] :as route} (note-route routes text)]
       (cond-> {:type :note
                :title (note-title (:text route text))

@@ -5,7 +5,8 @@
    [clojure.test :refer [deftest is testing]]
    [memo-router.classify :as classify]
    [memo-router.core :as core]
-   [memo-router.manifest :as manifest]))
+   [memo-router.manifest :as manifest])
+  (:import (java.time LocalDate)))
 
 ;; End-to-end tests of the pipeline. mlx_whisper and osascript are replaced by
 ;; small shell scripts, so nothing is transcribed and no real reminders or
@@ -85,6 +86,31 @@
         (is (= [] (calls (fs/path dir "notes"))))
         (is (= #{"2026-11-01/09-00-00.m4a"} (processed config))))))
 
+  (testing "a time in the reminder is read from the memo's recording time"
+    (fs/with-temp-dir [dir {}]
+      (let [config (test-config dir)]
+        (add-memo! dir "2026-11-02/18-30-12.m4a" "Remind me to call Dana tomorrow at 3.")
+        (is (= :reminder (core/process-memo! config false "2026-11-02/18-30-12.m4a")))
+        (is (= ["Inbox | Call Dana | Remind me to call Dana tomorrow at 3. | 2026-11-03T15:00 | false"]
+               (calls (fs/path dir "reminders")))))))
+
+  (testing "a date alone creates an all-day reminder"
+    (fs/with-temp-dir [dir {}]
+      (let [config (test-config dir)]
+        (add-memo! dir "2026-11-02/18-30-12.m4a" "Remind me to call Dana tomorrow.")
+        (core/process-memo! config false "2026-11-02/18-30-12.m4a")
+        (is (= ["Inbox | Call Dana | Remind me to call Dana tomorrow. | 2026-11-03T00:00 | true"]
+               (calls (fs/path dir "reminders")))))))
+
+  (testing "a memo path with no time in it falls back to the current time"
+    (fs/with-temp-dir [dir {}]
+      (let [config   (test-config dir)
+            tomorrow (.atStartOfDay (.plusDays (LocalDate/now) 1))]
+        (add-memo! dir "imported/odd-name.m4a" "Remind me to call Dana tomorrow.")
+        (core/process-memo! config false "imported/odd-name.m4a")
+        (is (= [(str "Inbox | Call Dana | Remind me to call Dana tomorrow. | " tomorrow " | true")]
+               (calls (fs/path dir "reminders")))))))
+
   (testing "anything else becomes a note"
     (fs/with-temp-dir [dir {}]
       (let [config (test-config dir)]
@@ -157,6 +183,6 @@
     (fs/with-temp-dir [dir {}]
       (let [config (test-config dir)]
         (add-memo! dir "2026-11-01/09-00-00.m4a" "Remind me to call Dana.")
-        (with-redefs [classify/classify (fn [text] {:type :task :title "x" :body text})]
+        (with-redefs [classify/classify (fn [_routes _now text] {:type :task :title "x" :body text})]
           (is (= {:failed 1} (run-with-config dir config))))
         (is (= #{} (processed config)))))))

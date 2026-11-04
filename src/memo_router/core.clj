@@ -4,11 +4,13 @@
    [clojure.string :as str]
    [memo-router.classify :as classify]
    [memo-router.config :as config]
+   [memo-router.due :as due]
    [memo-router.inbox :as inbox]
    [memo-router.notes :as notes]
    [memo-router.reminders :as reminders]
    [memo-router.whisper :as whisper]
-   [memo-router.manifest :as manifest]))
+   [memo-router.manifest :as manifest])
+  (:import (java.time LocalDateTime)))
 
 (def cli-spec
   {:config-path  {:desc "Path to config.edn" :default "config.edn"}
@@ -35,7 +37,8 @@
     (if (str/blank? transcript)
       (do (when-not dry-run (manifest/mark-processed! manifest rel-path))
           :skipped)
-      (let [{:keys [type] :as memo} (classify/classify (get-in config [:notes :routes]) transcript)]
+      (let [now (or (due/memo-time rel-path) (LocalDateTime/now))
+            {:keys [type] :as memo} (classify/classify (get-in config [:notes :routes]) now transcript)]
         (when-not dry-run
           (route! config memo)
           (manifest/mark-processed! manifest rel-path))
