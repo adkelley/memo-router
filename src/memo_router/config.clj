@@ -38,6 +38,8 @@
          (not (present? (:folder notes)))) (conj ":notes :folder is missing or blank")
     (and (contains? notes :account)
          (not (present? (:account notes)))) (conj ":notes :account is missing or blank")
+    (and (contains? reminders :account)
+         (not (present? (:account reminders)))) (conj ":reminders :account is missing or blank")
     (and (contains? reminders :list)
          (not (present? (:list reminders)))) (conj ":reminders :list is missing or blank")))
 

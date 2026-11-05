@@ -23,7 +23,10 @@ holds machine-specific paths, so create it yourself with this shape:
  :settle-ms 60000
  :whisper   {:bin   "/Users/<you>/.local/bin/mlx_whisper"
              :model "mlx-community/whisper-large-v3-turbo"}
- :reminders {:list "Inbox"}
+ :reminders {:account "iCloud"
+             :list    "Inbox"
+             :routes  {"Home" {:list "Home"}
+                       "Work" {:account "Work" :list "Tasks"}}}
  :notes     {:account "iCloud"
              :folder  "Notes"
              :routes  {"Work" {:account "Work"}
@@ -38,7 +41,9 @@ holds machine-specific paths, so create it yourself with this shape:
 | `:settle-ms` | Skip memos modified more recently than this, so files still syncing from iCloud are picked up on a later run. |
 | `:whisper :bin` | Absolute path to the `mlx_whisper` command (`which mlx_whisper`). |
 | `:whisper :model` | Hugging Face model used for transcription. Downloaded on first use into `~/.cache/huggingface/hub/`. |
+| `:reminders :account` | Optional. Reminders account (e.g. `"iCloud"`) that holds `:list`. Omit it to search all accounts, which is fine unless the same list name exists in more than one. |
 | `:reminders :list` | Optional. Reminders list for memos classified as reminders. Must match an existing list name exactly; omit it to use your default list. |
+| `:reminders :routes` | Optional. Map of spoken name to destination, `{:list "..." :account "..."}`, for sending a reminder to another list (see [Routing reminders to a list](#routing-reminders-to-a-list)). `:list` is required. Without `:account`, the route uses the top-level `:account`. |
 | `:notes :account` | Recommended. Notes account (e.g. `"iCloud"`) that notes are created in. Omit it to use Notes' default account, but that can change when accounts are added or the setting changes, so name it explicitly if you have work or client accounts. |
 | `:notes :folder` | Optional. Folder within that account for everything else. Must match an existing folder name exactly; omit it to use the account's default folder. Folder names can repeat across accounts, which is why the lookup is scoped to one account. |
 | `:notes :routes` | Optional. Map of spoken keyword to destination, `{:account "..." :folder "..."}`, for sending a note to another account (see [Routing notes to an account](#routing-notes-to-an-account)). `:account` is required. Without `:folder`, the note goes to that account's default folder, not the top-level `:folder`. |
@@ -113,9 +118,9 @@ at the start of the transcript, ignoring case, optionally followed by "note"
 and `:`, `,` or `.`, and is left out of the note's title. When several
 keywords match, the longest wins: with keys "Acme" and "Acme Corp", "Acme
 Corp: …" uses the "Acme Corp" route. A note with no
-keyword goes to the top-level `:account` and `:folder`. Reminders are not
-routed: "Acme, remind me to …" becomes an Acme note, because the reminder
-phrase must open the memo.
+keyword goes to the top-level `:account` and `:folder`. "Acme, remind me to …"
+becomes an Acme note, because the reminder phrase must open the memo. To route
+a reminder, see [Routing reminders to a list](#routing-reminders-to-a-list).
 
 Account names must match exactly; list them with:
 
@@ -125,6 +130,35 @@ osascript -l JavaScript -e 'Application("Notes").accounts.name()'
 
 Whisper may spell a keyword differently than you expect (e.g. "A.D.K."), so
 add aliases as extra keys pointing to the same destination.
+
+### Routing reminders to a list
+
+Start a memo with a name from `:reminders :routes`, followed by "list", to send
+it to that list:
+
+> Home list, remind me to do the dishes tomorrow at 3.
+
+This creates "Do the dishes" in the Home list, due tomorrow at 15:00. The name is
+matched at the start of the transcript, ignoring case, and can be followed by
+`:`, `,` or `.`. It is left out of the title, and the reminder's notes keep the
+full transcript. Naming a list is enough, so "Home list: do the dishes" works
+without "remind me to".
+
+A reminder that names no list goes to the top-level `:list`. A name that isn't in
+`:routes` isn't treated as a list, so "Garage list, remind me to sweep" becomes a
+note until you add a route for it. When several names match, the longest wins.
+
+A route's key is what you say, and its `:list` is the real list, so a short name
+can stand in for a long one: `"Gifts" {:list "Gift Ideas"}`. Each route
+looks in the top-level `:account` unless it sets its own. List your accounts and
+their lists with:
+
+```bash
+osascript -l JavaScript -e 'Application("Reminders").accounts().map(a => a.name() + ": " + a.lists.name().join(", ")).join("\n")'
+```
+
+Whisper can mishear these phrases: "home list" sometimes comes through as
+"homeless", which won't match.
 
 ### Shopping list
 

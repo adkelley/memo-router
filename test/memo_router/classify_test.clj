@@ -65,6 +65,52 @@
       "  Idea   for the   wiki  "
       "Idea for the wiki")))
 
+(def note-routes {"Acme"      {:account "Acme"}
+                  "Acme Corp" {:account "Acme Corp" :folder "Memos"}})
+
+(def reminder-routes {"Home"         {:list "Home"}
+                      "ADK Partners" {:account "ADK" :list "Tasks"}})
+
+(deftest note-route-test
+  (testing "matches a keyword at the start, ignoring case, with optional \"note\""
+    (are [text remaining] (= {:destination {:account "Acme"} :text remaining}
+                             (classify/note-route note-routes text))
+      "Acme note: call the auditor."  "call the auditor."
+      "acme, call the auditor."       "call the auditor."
+      "Acme. Call the auditor."       "Call the auditor."
+      "ACME call the auditor."        "call the auditor."))
+
+  (testing "the longest keyword wins"
+    (is (= {:account "Acme Corp" :folder "Memos"}
+           (:destination (classify/note-route note-routes "Acme Corp: call the auditor.")))))
+
+  (testing "nil when no keyword starts the text, or there are no routes"
+    (are [routes text] (nil? (classify/note-route routes text))
+      note-routes "Call Acme about the audit."
+      note-routes "Acmeville is lovely."
+      nil         "Acme note: call the auditor.")))
+
+(deftest reminder-route-test
+  (testing "matches a name and \"list\" at the start, ignoring case and punctuation"
+    (are [text remaining] (= {:destination {:list "Home"} :text remaining}
+                             (classify/reminder-route reminder-routes text))
+      "Home list, remind me to do the dishes." "remind me to do the dishes."
+      "Home list. Remind me to do the dishes." "Remind me to do the dishes."
+      "home list: do the dishes."              "do the dishes."
+      "HOME LIST remind me to do the dishes"   "remind me to do the dishes"))
+
+  (testing "a name can be several words, and carry its own account"
+    (is (= {:account "ADK" :list "Tasks"}
+           (:destination (classify/reminder-route reminder-routes "ADK Partners list, call Dana.")))))
+
+  (testing "nil without \"list\", for an unknown name, or with no routes"
+    (are [routes text] (nil? (classify/reminder-route routes text))
+      reminder-routes "Home, remind me to do the dishes."
+      reminder-routes "Home lists are useful."
+      reminder-routes "Garage list, remind me to sweep."
+      reminder-routes "Remind me to do the dishes."
+      nil             "Home list, remind me to do the dishes.")))
+
 (deftest noise?-test
   (testing "true for a blank or one-word transcript"
     (are [text] (true? (classify/noise? text))
@@ -141,6 +187,46 @@
 
   (testing "the title keeps the phrase when nothing else is left"
     (is (= "Tomorrow" (:title (classify/classify nil now "Remind me tomorrow.")))))
+
+  (testing "a reminder naming a list gets :destination, and keeps the full :body"
+    (is (= {:type        :reminder
+            :title       "Do the dishes"
+            :body        "Home list, remind me to do the dishes."
+            :destination {:list "Home"}}
+           (classify/classify {:reminders reminder-routes} now
+                              "Home list, remind me to do the dishes."))))
+
+  (testing "naming a list is enough to make a reminder"
+    (is (= {:type        :reminder
+            :title       "Do the dishes"
+            :body        "Home list: do the dishes."
+            :destination {:list "Home"}}
+           (classify/classify {:reminders reminder-routes} now "Home list: do the dishes."))))
+
+  (testing "a routed reminder still reads its due date"
+    (is (= {:type        :reminder
+            :title       "Do the dishes"
+            :body        "Home list. Remind me to do the dishes tomorrow at 3."
+            :due         (LocalDateTime/of 2026 11 3 15 0)
+            :destination {:list "Home"}}
+           (classify/classify {:reminders reminder-routes} now
+                              "Home list. Remind me to do the dishes tomorrow at 3."))))
+
+  (testing "a reminder naming no list gets no :destination"
+    (is (not (contains? (classify/classify {:reminders reminder-routes} now "Remind me to call Dana.")
+                        :destination))))
+
+  (testing "a note starting with a keyword gets :destination, and its title omits it"
+    (is (= {:type        :note
+            :title       "Call the auditor"
+            :body        "Acme note: call the auditor."
+            :destination {:account "Acme"}}
+           (classify/classify {:notes note-routes} now "Acme note: call the auditor."))))
+
+  (testing "a list prefix is a reminder even when its name is also a note keyword"
+    (is (= :reminder
+           (:type (classify/classify {:notes {"Home" {:account "Home"}} :reminders reminder-routes}
+                                     now "Home list, do the dishes.")))))
 
   (testing "a note never gets :due"
     (is (= {:type  :note

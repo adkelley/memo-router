@@ -80,10 +80,11 @@
       (testing "optional keys, when present, must not be blank"
         (is (= [":notes :folder is missing or blank"
                 ":notes :account is missing or blank"
+                ":reminders :account is missing or blank"
                 ":reminders :list is missing or blank"]
                (config/problems (assoc good
                                        :notes {:account "" :folder nil}
-                                       :reminders {:list " "}))))))
+                                       :reminders {:account "" :list " "}))))))
 
     (testing "reports every problem at once, in check order"
       (is (= [":memo-dir is missing or blank"

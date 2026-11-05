@@ -13,16 +13,18 @@ Each stage works on its own and has tests that mock its external tool.
 - `whisper` – transcribe a memo with `mlx_whisper` into a trimmed string
 - `classify` – keyword rules turn a transcript into
   `{:type :reminder|:note :title … :body …}`, plus `:due` on a reminder with a
-  date or time and `:destination` on a note with a spoken keyword, or into
-  `{:type :shopping :items … :body …}` for a shopping request
+  date or time and `:destination` on a reminder naming a list or a note with a
+  spoken keyword, or into `{:type :shopping :items … :body …}` for a shopping
+  request
 - `shopping` – add each item to the shopping list through a Shortcut, so
   Reminders sorts it into a grocery section
 - Blank or one-word transcripts are skipped, since Whisper invents words like
   "You" from silence
 - `due` – read dates and times from a reminder's transcript, relative to the
   memo's recording time, and remove the phrase from its title
-- `reminders` – create a reminder in a named list through `osascript`, timed
-  or all-day when it has a due date
+- `reminders` – create a reminder in a named account and list through
+  `osascript`, timed or all-day when it has a due date, or the list chosen by a
+  spoken prefix from `:reminders :routes`
 - `notes` – create a note as escaped HTML in a named account and folder, or
   the account chosen by a spoken keyword from `:notes :routes`
 - `config` – load `config.edn` and report every problem before a run starts
@@ -36,7 +38,18 @@ Each stage works on its own and has tests that mock its external tool.
 
 ## Next
 
-Nothing is scheduled. Pick the next item from **Later**.
+### 1. Errata map
+
+Fix what Whisper regularly mishears, using a map in `config.edn`, e.g.
+"homeless" → "home list" or "foreclosure" → "for Clojure". A pure function
+scrubs the transcript after `whisper` and before `classify`, so every feature
+sees the corrected text.
+
+- Match whole words, ignoring case
+- A plain replacement changes every occurrence, so "homeless shelter" would
+  become "home list shelter". Decide whether that matters, or whether an entry
+  can apply only at the start of a memo
+- Decide whether `:body` keeps Whisper's text or the corrected text
 
 ## Later
 
@@ -57,7 +70,6 @@ Nothing is scheduled. Pick the next item from **Later**.
   `due/extract-due`. An LLM could also fill the `:destination` slot for notes
 - With an LLM, split shopping items from context, so "mac and cheese" stays
   whole, and accept looser requests
-- Route reminders to lists by spoken prefix, as notes are routed to accounts
 
 ### Due dates
 
@@ -82,10 +94,8 @@ Nothing is scheduled. Pick the next item from **Later**.
 ### Robustness
 
 - Skip Whisper's longer inventions, such as "Thank you.", if they appear
-- Tests for note routing: `note-route`, `classify` with routes, and a routed
-  note end to end in `core_test`
-- Validate `:notes :routes` in `config/problems`, so a bad route is reported
-  at startup instead of as a failed memo
+- Validate `:notes :routes` and `:reminders :routes` in `config/problems`, so a
+  bad route is reported at startup instead of as a failed memo
 - Switch `core` from `println` to `clojure.tools.logging`: memo names and
   routing decisions, never transcript text
 - Startup check that `:reminders :list` and `:notes :folder` exist, using the
@@ -97,13 +107,26 @@ Nothing is scheduled. Pick the next item from **Later**.
   `brctl download` instead of silently skipping them
 - `whisper`: throw `ex-info` (with `:file` and `:out-dir`) when `mlx_whisper`
   exits 0 but writes no transcript
-- Optional `:account` for Reminders, matching Notes, if lists ever repeat
-  across accounts
 
 ### Tooling
 
 - Optional `bb agent:install` task that fills in the plist template, replacing
   the `sed` command in the README
+
+### Links on reminders
+
+- A link template on a reminder route, using any site's search URL, so "Spotify
+  list, remind me to look into Pink Floyd" adds
+  `https://open.spotify.com/search/Pink%20Floyd` to the reminder's notes. A Books
+  route could use `https://www.amazon.com/s?k={query}&i=stripbooks` or
+  `https://www.goodreads.com/search?q={query}`. This needs no API keys.
+  Reminders scripting has no URL field, so the link goes in the body. Check that
+  it is tappable there
+- Getting "Pink Floyd" out of "look into Pink Floyd" is the hard part: a few
+  stripped phrases to start with, or an LLM later
+- Direct links, as a later step: Spotify's Web API for artists and albums, using
+  a client ID and secret (the user has the Premium it requires), and possibly
+  Open Library for books
 
 ### Transcription
 

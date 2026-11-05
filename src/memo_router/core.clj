@@ -22,7 +22,7 @@
   "Creates the reminder, note, or shopping list item for a classified memo."
   [config {:keys [type] :as memo}]
   (case type
-    :reminder (reminders/add-reminder! (:reminders config) memo)
+    :reminder (reminders/add-reminder! (merge (:reminders config) (:destination memo)) memo)
     :shopping (shopping/add-items! (:shopping config) memo)
     :note (notes/add-note! (if-let [destination (:destination memo)]
                              (merge (select-keys (:notes config) [:bin]) destination)
@@ -38,8 +38,10 @@
     (if (classify/noise? transcript)
       (do (when-not dry-run (manifest/mark-processed! manifest rel-path))
           :skipped)
-      (let [now (or (due/memo-time rel-path) (LocalDateTime/now))
-            {:keys [type] :as memo} (classify/classify (get-in config [:notes :routes]) now transcript)]
+      (let [now    (or (due/memo-time rel-path) (LocalDateTime/now))
+            routes {:notes     (get-in config [:notes :routes])
+                    :reminders (get-in config [:reminders :routes])}
+            {:keys [type] :as memo} (classify/classify routes now transcript)]
         (when-not dry-run
           (route! config memo)
           (manifest/mark-processed! manifest rel-path))

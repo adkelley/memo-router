@@ -4,19 +4,32 @@
 
 (def reminder-pattern #"(?i)^\s*(remind me( to)?|reminder:?|don[’']t forget( to)?)\b:?\s*")
 
-(defn- route-pattern [keyword]
-  (re-pattern (str "(?i)^\\s*" (java.util.regex.Pattern/quote keyword) "\\b\\s*(note)?\\b[:,.]?\\s*")))
+(defn- route-pattern [keyword suffix]
+  (re-pattern (str "(?i)^\\s*" (java.util.regex.Pattern/quote keyword) suffix "[:,.]?\\s*")))
 
-(defn note-route
-  "Returns {:destination <route> :text <text without the prefix>} for the
-  first keyword in routes that starts text, longest keyword first, or nil."
-  [routes text]
+(defn- find-route
+  "Returns {:destination <route> :text <text without the prefix>} for the first
+  keyword in routes that starts text and is followed by suffix, longest keyword
+  first, or nil."
+  [suffix routes text]
   (some (fn [[keyword destination]]
-          (let [pattern (route-pattern keyword)]
+          (let [pattern (route-pattern keyword suffix)]
             (when (re-find pattern text)
               {:destination destination
                :text (str/replace-first text pattern "")})))
         (sort-by (comp - count key) routes)))
+
+(defn note-route
+  "The route for a note starting with a keyword from routes, optionally followed
+  by \"note\", as in \"Acme note: call the auditor\". See find-route."
+  [routes text]
+  (find-route "\\b\\s*(note)?\\b" routes text))
+
+(defn reminder-route
+  "The route for a reminder starting with a keyword from routes and \"list\", as
+  in \"Home list, remind me to do the dishes\". See find-route."
+  [routes text]
+  (find-route "\\s+list\\b" routes text))
 
 (defn reminder? [text]
   (some? (re-find reminder-pattern text)))
@@ -59,13 +72,16 @@
          (remove str/blank?)
          (mapv capitalize-first))))
 
-(defn- reminder-memo [now text]
-  (let [{:keys [due] :as found} (due/extract-due now text)
-        title (reminder-title (:text found text))]
+(defn- reminder-memo [routes now text]
+  (let [{:keys [destination] :as route} (reminder-route routes text)
+        task  (:text route text)
+        {:keys [due] :as found} (due/extract-due now task)
+        title (reminder-title (:text found task))]
     (cond-> {:type :reminder
-             :title (if (str/blank? title) (reminder-title text) title)
+             :title (if (str/blank? title) (reminder-title task) title)
              :body text}
-      due (assoc :due due))))
+      due (assoc :due due)
+      destination (assoc :destination destination))))
 
 (defn- note-memo [routes text]
   (let [{:keys [destination] :as route} (note-route routes text)]
@@ -79,14 +95,21 @@
   A shopping request returns {:type :shopping :items :body}; the others return
   {:type :title :body}. A reminder with a date or time phrase (see
   due/extract-due, read relative to now) also gets :due, and its title omits
-  the phrase. A note that starts with a keyword from routes (see note-route)
-  also gets :destination, and its title omits the keyword. routes may be nil."
-  [routes now text]
+  the phrase. A reminder starting with a list from (:reminders routes) (see
+  reminder-route), or a note starting with a keyword from (:notes routes) (see
+  note-route), also gets :destination, and its title omits the prefix. routes
+  may be nil."
+  [{:keys [notes reminders]} now text]
   (let [items (shopping-items text)]
     (cond
-      items            {:type :shopping :items items :body text}
-      (reminder? text) (reminder-memo now text)
-      :else            (note-memo routes text))))
+      items
+      {:type :shopping :items items :body text}
+
+      (or (reminder-route reminders text) (reminder? text))
+      (reminder-memo reminders now text)
+
+      :else
+      (note-memo notes text))))
 
 (defn noise?
   "True if a transcript has fewer than two words.  Whisper often invents a single
