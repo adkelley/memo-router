@@ -78,14 +78,26 @@ sees the corrected text.
 - Spelled-out hours ("at three"), if transcripts turn out to need them
 - Recurring reminders ("every Friday"), which need EventKit (see below)
 
+### Priority
+
+- Read "high priority" or "urgent" from a reminder, remove it from the title, and
+  set `:priority`. Reminders scripting supports this directly: 0 is none, 1–4
+  high, 5 medium and 6–9 low, so it needs no EventKit
+
 ### Reminders through EventKit
 
 - Explore a small Swift helper that creates reminders with EventKit, called
   from the `reminders` namespace in place of `osascript`. `EKRecurrenceRule`
   can repeat a reminder on several weekdays ("every Sunday and Wednesday"),
   which the Reminders scripting dictionary has no way to set
+- Location triggers, also missing from scripting: "Remind me to take out the
+  trash when I get home" or "when I leave home", using an `EKAlarm` with a
+  `structuredLocation` and `proximity`. Places would live in `config.edn`, e.g.
+  `:places {"home" {:title "Home" :latitude … :longitude … :radius 100}}`
 - Check first that a command-line helper can get Reminders access when run by
   launchd
+- Test with one real reminder whether a location alarm made on the Mac syncs and
+  fires on the iPhone, and whether it works on lists outside iCloud
 - Test whether an item saved through EventKit is sorted into a Groceries
   section. EventKit has no public API for sections, so the shopping list may
   need to stay on Shortcuts
