@@ -18,6 +18,7 @@
      :manifest  (str (fs/path dir "memo-router" "processed.txt"))
      :settle-ms 60000
      :whisper   {:bin bin :model "mlx-community/whisper-large-v3-turbo"}
+     :shopping  {:shortcut "Add to Shopping List"}
      :reminders {:list "Inbox"}
      :notes     {:account "iCloud" :folder "Notes"}}))
 
@@ -38,7 +39,11 @@
         (is (= [":manifest is missing or blank"]
                (config/problems (assoc good :manifest "  "))))
         (is (= [":whisper :model is missing or blank"]
-               (config/problems (assoc-in good [:whisper :model] "")))))
+               (config/problems (assoc-in good [:whisper :model] ""))))
+        (is (= [":shopping :shortcut is missing or blank"]
+               (config/problems (dissoc good :shopping))))
+        (is (= [":shopping :shortcut is missing or blank"]
+               (config/problems (assoc-in good [:shopping :shortcut] " ")))))
 
       (testing "a non-string value is reported rather than crashing"
         (is (= [":memo-dir is missing or blank"]
@@ -85,7 +90,8 @@
               ":manifest is missing or blank"
               ":settle-ms must be a non-negative integer"
               ":whisper :bin is missing or blank"
-              ":whisper :model is missing or blank"]
+              ":whisper :model is missing or blank"
+              ":shopping :shortcut is missing or blank"]
              (config/problems {}))))))
 
 (deftest read-config-test

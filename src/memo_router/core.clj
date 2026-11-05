@@ -1,12 +1,12 @@
 (ns memo-router.core
   (:require
    [babashka.fs :as fs]
-   [clojure.string :as str]
    [memo-router.classify :as classify]
    [memo-router.config :as config]
    [memo-router.due :as due]
    [memo-router.inbox :as inbox]
    [memo-router.notes :as notes]
+   [memo-router.shopping :as shopping]
    [memo-router.reminders :as reminders]
    [memo-router.whisper :as whisper]
    [memo-router.manifest :as manifest])
@@ -19,10 +19,11 @@
                  :default false}})
 
 (defn- route!
-  "Creates the reminder or note for a classified memo."
+  "Creates the reminder, note, or shopping list item for a classified memo."
   [config {:keys [type] :as memo}]
   (case type
     :reminder (reminders/add-reminder! (:reminders config) memo)
+    :shopping (shopping/add-items! (:shopping config) memo)
     :note (notes/add-note! (if-let [destination (:destination memo)]
                              (merge (select-keys (:notes config) [:bin]) destination)
                              (:notes config))
@@ -31,10 +32,10 @@
 (defn process-memo!
   "Transcribes, classifies, and routes one memo, then marks it processed.
    With dry-run, only transcribes and classifies. Returns :reminder, :note,
-   or :skipped (blank transcript)."
+   :shopping, or :skipped (blank or one-word transcript)."
   [{whisper-config :whisper :keys [memo-dir manifest] :as config} dry-run rel-path]
   (let [transcript (whisper/transcribe whisper-config (str (fs/path memo-dir rel-path)))]
-    (if (str/blank? transcript)
+    (if (classify/noise? transcript)
       (do (when-not dry-run (manifest/mark-processed! manifest rel-path))
           :skipped)
       (let [now (or (due/memo-time rel-path) (LocalDateTime/now))

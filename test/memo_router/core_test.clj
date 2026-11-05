@@ -45,8 +45,19 @@
                     "printf '%s\\n' \"$line\" >> \"$(dirname \"$0\")/calls.txt\"\n"
                     "exit " exit "\n")))
 
+(defn- fake-shortcuts!
+  "A stand-in for shortcuts that appends the item on stdin as one line to
+  calls.txt in its own folder, then exits with exit."
+  [dir exit]
+  (fs/create-dirs dir)
+  (executable! (fs/path dir "fake-shortcuts")
+               (str "#!/bin/sh\n"
+                    "cat >> \"$(dirname \"$0\")/calls.txt\"\n"
+                    "printf '\\n' >> \"$(dirname \"$0\")/calls.txt\"\n"
+                    "exit " exit "\n")))
+
 (defn- calls
-  "What the fake osascript in dir was called with, one entry per call."
+  "What the fake command in dir was called with, one entry per call."
   [dir]
   (let [f (str (fs/path dir "calls.txt"))]
     (if (fs/exists? f) (str/split-lines (slurp f)) [])))
@@ -62,13 +73,16 @@
           transcript)))
 
 (defn- test-config
-  "A complete config inside dir. :reminders-exit / :notes-exit set the exit
-  code of the matching fake osascript."
-  [dir & {:keys [reminders-exit notes-exit] :or {reminders-exit 0 notes-exit 0}}]
+  "A complete config inside dir. :reminders-exit, :notes-exit and :shopping-exit
+  set the exit code of the matching fake command."
+  [dir & {:keys [reminders-exit notes-exit shopping-exit]
+          :or   {reminders-exit 0 notes-exit 0 shopping-exit 0}}]
   {:memo-dir  (str (fs/create-dirs (fs/path dir "memos")))
    :manifest  (str (fs/path dir "state" "processed.txt"))
    :settle-ms 0
    :whisper   {:bin (fake-whisper! dir) :model "test-model"}
+   :shopping  {:bin      (fake-shortcuts! (fs/path dir "shopping") shopping-exit)
+               :shortcut "Add to Shopping List"}
    :reminders {:bin (fake-osascript! (fs/path dir "reminders") reminders-exit) :list "Inbox"}
    :notes     {:bin (fake-osascript! (fs/path dir "notes") notes-exit)
                :account "iCloud" :folder "Notes"}})
@@ -129,6 +143,14 @@
         (is (= [] (calls (fs/path dir "reminders")) (calls (fs/path dir "notes"))))
         (is (= #{"2026-11-01/11-00-00.m4a"} (processed config))))))
 
+  (testing "a one-word transcript creates nothing but is marked processed"
+    (fs/with-temp-dir [dir {}]
+      (let [config (test-config dir)]
+        (add-memo! dir "2026-11-01/11-00-00.m4a" "You")
+        (is (= :skipped (core/process-memo! config false "2026-11-01/11-00-00.m4a")))
+        (is (= [] (calls (fs/path dir "reminders")) (calls (fs/path dir "notes"))))
+        (is (= #{"2026-11-01/11-00-00.m4a"} (processed config))))))
+
   (testing "dry-run classifies but creates nothing and leaves the manifest alone"
     (fs/with-temp-dir [dir {}]
       (let [config (test-config dir)]
@@ -136,6 +158,32 @@
         (is (= :reminder (core/process-memo! config true "2026-11-01/09-00-00.m4a")))
         (is (= [] (calls (fs/path dir "reminders"))))
         (is (not (fs/exists? (:manifest config)))))))
+
+  (testing "a shopping request adds each item and marks the memo processed"
+    (fs/with-temp-dir [dir {}]
+      (let [config (test-config dir)]
+        (add-memo! dir "2026-11-01/09-00-00.m4a"
+                   "Remind me to add pickles, tomatoes, and flour to my shopping list.")
+        (is (= :shopping (core/process-memo! config false "2026-11-01/09-00-00.m4a")))
+        (is (= ["Pickles" "Tomatoes" "Flour"] (calls (fs/path dir "shopping"))))
+        (is (= [] (calls (fs/path dir "reminders"))))
+        (is (= #{"2026-11-01/09-00-00.m4a"} (processed config))))))
+
+  (testing "with dry-run, a shopping request adds nothing"
+    (fs/with-temp-dir [dir {}]
+      (let [config (test-config dir)]
+        (add-memo! dir "2026-11-01/09-00-00.m4a" "Add milk to my grocery list.")
+        (is (= :shopping (core/process-memo! config true "2026-11-01/09-00-00.m4a")))
+        (is (= [] (calls (fs/path dir "shopping"))))
+        (is (= #{} (processed config))))))
+
+  (testing "when an item fails, it throws and the memo is not marked processed"
+    (fs/with-temp-dir [dir {}]
+      (let [config (test-config dir :shopping-exit 1)]
+        (add-memo! dir "2026-11-01/09-00-00.m4a" "Add milk to my grocery list.")
+        (is (thrown? clojure.lang.ExceptionInfo
+                     (core/process-memo! config false "2026-11-01/09-00-00.m4a")))
+        (is (= #{} (processed config))))))
 
   (testing "when Reminders fails, it throws and the memo is not marked processed"
     (fs/with-temp-dir [dir {}]

@@ -65,6 +65,45 @@
       "  Idea   for the   wiki  "
       "Idea for the wiki")))
 
+(deftest noise?-test
+  (testing "true for a blank or one-word transcript"
+    (are [text] (true? (classify/noise? text))
+      ""
+      "   "
+      "You"
+      "  You.  "))
+
+  (testing "false for two or more words"
+    (are [text] (false? (classify/noise? text))
+      "Call Dana"
+      "  Call   Dana.  "
+      "Remind me to call Dana.")))
+
+(deftest shopping-items-test
+  (testing "splits on commas and \"and\", and capitalizes each item"
+    (are [text items] (= items (classify/shopping-items text))
+      "Remind me to add pickles, tomatoes, and flour to my shopping list."
+      ["Pickles" "Tomatoes" "Flour"]
+
+      "Add milk to my grocery list."
+      ["Milk"]
+
+      "add eggs and butter to the shopping list"
+      ["Eggs" "Butter"]
+
+      "Don't forget to add olive oil, salt and pepper to my shopping list."
+      ["Olive oil" "Salt" "Pepper"]
+
+      "Don’t forget to add sandwiches to my shopping list!"
+      ["Sandwiches"]))
+
+  (testing "nil when the whole transcript isn't a shopping request"
+    (are [text] (nil? (classify/shopping-items text))
+      "Remind me to add a note to the wiki."
+      "Remind me to call Dana."
+      "I told Dana to add milk to my shopping list."
+      "Add milk to my shopping list and call Dana.")))
+
 (def now (LocalDateTime/of 2026 11 2 10 0))
 
 (deftest classify-test
@@ -73,6 +112,12 @@
             :title "Look into Ring software for Clojure"
             :body  "Remind me to look into Ring software for Clojure."}
            (classify/classify nil now "Remind me to look into Ring software for Clojure."))))
+
+  (testing "a shopping request carries its items, even when it starts like a reminder"
+    (is (= {:type  :shopping
+            :items ["Pickles" "Flour"]
+            :body  "Remind me to add pickles and flour to my shopping list."}
+           (classify/classify nil now "Remind me to add pickles and flour to my shopping list."))))
 
   (testing "anything else is a note"
     (is (= {:type  :note

@@ -10,6 +10,7 @@ into Apple Reminders or Apple Notes.
 - `ffmpeg` (`brew install ffmpeg`)
 - MLX Whisper as a uv tool (`uv tool install mlx-whisper`)
 - Just Press Record with iCloud sync turned on
+- A Shortcut for adding shopping items (see [Shopping list](#shopping-list))
 
 ## Configuration
 
@@ -26,7 +27,8 @@ holds machine-specific paths, so create it yourself with this shape:
  :notes     {:account "iCloud"
              :folder  "Notes"
              :routes  {"Work" {:account "Work"}
-                       "Acme" {:account "Acme Corp" :folder "Memos"}}}}
+                       "Acme" {:account "Acme Corp" :folder "Memos"}}}
+ :shopping  {:shortcut "Add to Shopping List"}}
 ```
 
 | Key | Meaning |
@@ -40,10 +42,12 @@ holds machine-specific paths, so create it yourself with this shape:
 | `:notes :account` | Recommended. Notes account (e.g. `"iCloud"`) that notes are created in. Omit it to use Notes' default account, but that can change when accounts are added or the setting changes, so name it explicitly if you have work or client accounts. |
 | `:notes :folder` | Optional. Folder within that account for everything else. Must match an existing folder name exactly; omit it to use the account's default folder. Folder names can repeat across accounts, which is why the lookup is scoped to one account. |
 | `:notes :routes` | Optional. Map of spoken keyword to destination, `{:account "..." :folder "..."}`, for sending a note to another account (see [Routing notes to an account](#routing-notes-to-an-account)). `:account` is required. Without `:folder`, the note goes to that account's default folder, not the top-level `:folder`. |
+| `:shopping :shortcut` | Name of the Shortcut that adds one item to your shopping list (see [Shopping list](#shopping-list)). Must match its name in the Shortcuts app exactly. |
 
-Reminders and Notes are driven through `/usr/bin/osascript`, which is part of
-macOS, so it needs no configuration. Both `:reminders` and `:notes` accept an
-optional `:bin` that overrides that path; the tests use it to substitute a fake.
+Reminders and Notes are driven through `/usr/bin/osascript`, and shopping items
+through `/usr/bin/shortcuts`. Both are part of macOS, so they need no
+configuration. `:reminders`, `:notes` and `:shopping` each accept an optional
+`:bin` that overrides that path; the tests use it to substitute a fake.
 
 Use absolute paths throughout: launchd runs with a minimal environment, so `~`
 and `$HOME` are not expanded. Keep API keys out of this file and set them as
@@ -71,6 +75,13 @@ the routing is not what you expected.
 
 For development, start a REPL with `rlwrap bb repl` and reload a namespace
 after saving with `(require 'memo-router.core :reload)`.
+
+### Skipped memos
+
+A memo with a blank or one-word transcript is skipped: nothing is created, and
+it is marked processed so it isn't tried again. Whisper often invents a single
+word, such as "You", from a recording of silence. The log shows these as
+`:skipped`, and the audio stays in iCloud.
 
 ### Processing a memo again
 
@@ -114,6 +125,30 @@ osascript -l JavaScript -e 'Application("Notes").accounts.name()'
 
 Whisper may spell a keyword differently than you expect (e.g. "A.D.K."), so
 add aliases as extra keys pointing to the same destination.
+
+### Shopping list
+
+Ask to add items to your shopping list, and each one goes on the list
+separately:
+
+> Remind me to add pickles, tomatoes, and flour to my shopping list.
+
+The memo has to be just that request. It can start with "Remind me to", "Don't
+forget to" or simply "Add", and end with "my" or "the", then "shopping list" or
+"grocery list". Anything else is handled as an ordinary reminder or note.
+
+Items are added through a Shortcut, because Reminders sorts those into grocery
+sections and leaves items added through `osascript` uncategorized. Create one
+that takes text as its input and adds it to your grocery list with the Add New
+Reminder action, then put its name in `:shopping :shortcut`. To check it:
+
+```bash
+echo "Tomatoes" | shortcuts run "Add to Shopping List"
+```
+
+Items are split on commas and "and", so "mac and cheese" becomes two items. If
+an item fails, the memo stays unprocessed and the next run starts it again, so
+items added before the failure appear twice.
 
 ### Due dates on reminders
 

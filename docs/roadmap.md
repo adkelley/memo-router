@@ -13,7 +13,12 @@ Each stage works on its own and has tests that mock its external tool.
 - `whisper` – transcribe a memo with `mlx_whisper` into a trimmed string
 - `classify` – keyword rules turn a transcript into
   `{:type :reminder|:note :title … :body …}`, plus `:due` on a reminder with a
-  date or time and `:destination` on a note with a spoken keyword
+  date or time and `:destination` on a note with a spoken keyword, or into
+  `{:type :shopping :items … :body …}` for a shopping request
+- `shopping` – add each item to the shopping list through a Shortcut, so
+  Reminders sorts it into a grocery section
+- Blank or one-word transcripts are skipped, since Whisper invents words like
+  "You" from silence
 - `due` – read dates and times from a reminder's transcript, relative to the
   memo's recording time, and remove the phrase from its title
 - `reminders` – create a reminder in a named list through `osascript`, timed
@@ -31,12 +36,7 @@ Each stage works on its own and has tests that mock its external tool.
 
 ## Next
 
-### 1. Spoken shopping list
-
-Add each item from "Remind me to add pickles, tomatoes, and flour to my
-shopping list" to the Groceries list. Items go through a Shortcut, because
-Reminders sorts those into grocery sections and leaves items added by
-`osascript` uncategorized.
+Nothing is scheduled. Pick the next item from **Later**.
 
 ## Later
 
@@ -55,6 +55,8 @@ Reminders sorts those into grocery sections and leaves items added by
   lists
 - With an LLM, read due dates from context, filling the same `:due` slot as
   `due/extract-due`. An LLM could also fill the `:destination` slot for notes
+- With an LLM, split shopping items from context, so "mac and cheese" stays
+  whole, and accept looser requests
 - Route reminders to lists by spoken prefix, as notes are routed to accounts
 
 ### Due dates
@@ -79,6 +81,7 @@ Reminders sorts those into grocery sections and leaves items added by
 
 ### Robustness
 
+- Skip Whisper's longer inventions, such as "Thank you.", if they appear
 - Tests for note routing: `note-route`, `classify` with routes, and a routed
   note end to end in `core_test`
 - Validate `:notes :routes` in `config/problems`, so a bad route is reported

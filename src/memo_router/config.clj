@@ -18,7 +18,7 @@
 
 (defn problems
   "Returns a vector of problems found in the config map."
-  [{:keys [memo-dir manifest settle-ms whisper reminders notes]}]
+  [{:keys [memo-dir manifest settle-ms whisper reminders notes shopping]}]
   (cond-> []
     (not (present? memo-dir)) (conj ":memo-dir is missing or blank")
     (and (present? memo-dir)
@@ -33,6 +33,7 @@
     (and (present? (:bin whisper))
          (not (fs/executable? (:bin whisper)))) (conj ":whisper :bin is not executable")
     (not (present? (:model whisper))) (conj ":whisper :model is missing or blank")
+    (not (present? (:shortcut shopping))) (conj ":shopping :shortcut is missing or blank")
     (and (contains? notes :folder)
          (not (present? (:folder notes)))) (conj ":notes :folder is missing or blank")
     (and (contains? notes :account)
