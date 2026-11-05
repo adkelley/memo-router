@@ -186,3 +186,30 @@
         (with-redefs [classify/classify (fn [_routes _now text] {:type :task :title "x" :body text})]
           (is (= {:failed 1} (run-with-config dir config))))
         (is (= #{} (processed config)))))))
+
+(deftest re-process-test
+  (testing "the next run handles the memo again, and creates a second reminder"
+    (fs/with-temp-dir [dir {}]
+      (let [config (test-config dir)
+            memo   "2026-11-01/09-00-00.m4a"]
+        (add-memo! dir memo "Remind me to call Dana.")
+        (is (= {:reminder 1} (run-with-config dir config)))
+        (is (str/includes?
+             (with-out-str (core/re-process {:config-path (str (fs/path dir "config.edn"))
+                                             :memo        memo}))
+             "next run"))
+        (is (= #{} (processed config)))
+        (is (= {:reminder 1} (run-with-config dir config)))
+        (is (= 2 (count (calls (fs/path dir "reminders"))))))))
+
+  (testing "says so when the memo isn't in the manifest, and changes nothing"
+    (fs/with-temp-dir [dir {}]
+      (let [config (test-config dir)
+            memo   "2026-11-01/09-00-00.m4a"]
+        (add-memo! dir memo "Remind me to call Dana.")
+        (run-with-config dir config)
+        (is (str/includes?
+             (with-out-str (core/re-process {:config-path (str (fs/path dir "config.edn"))
+                                             :memo        "2026-11-01/10-00-00.m4a"}))
+             "not in the manifest"))
+        (is (= #{memo} (processed config)))))))

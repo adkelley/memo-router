@@ -32,7 +32,7 @@ holds machine-specific paths, so create it yourself with this shape:
 | Key | Meaning |
 |---|---|
 | `:memo-dir` | Just Press Record's iCloud folder. Memos sit in date folders, e.g. `2026-10-31/11-23-32.m4a`. |
-| `:manifest` | Where Memo Router records processed memos. You only choose the path: the file and its folder are created on the first successful run, and each handled memo is appended as a path relative to `:memo-dir` (e.g. `2026-10-31/11-23-32.m4a`). Remove a line to have that memo processed again. |
+| `:manifest` | Where Memo Router records processed memos. You only choose the path: the file and its folder are created on the first successful run, and each handled memo is appended as a path relative to `:memo-dir` (e.g. `2026-10-31/11-23-32.m4a`). Use `bb re-process` to have a memo processed again (see [Processing a memo again](#processing-a-memo-again)). |
 | `:settle-ms` | Skip memos modified more recently than this, so files still syncing from iCloud are picked up on a later run. |
 | `:whisper :bin` | Absolute path to the `mlx_whisper` command (`which mlx_whisper`). |
 | `:whisper :model` | Hugging Face model used for transcription. Downloaded on first use into `~/.cache/huggingface/hub/`. |
@@ -71,6 +71,28 @@ the routing is not what you expected.
 
 For development, start a REPL with `rlwrap bb repl` and reload a namespace
 after saving with `(require 'memo-router.core :reload)`.
+
+### Processing a memo again
+
+`bb re-process` removes a memo from the manifest, so the next run handles it
+again from the audio. It is most useful after a parsing fix or a change of
+model. Failed memos do not need it, since they are retried on their own.
+
+```bash
+bb re-process 2026-10-31/11-23-32.m4a
+```
+
+The memo's path is its recording date and time. To find one, look it up by
+that time in Just Press Record, or search the manifest for the date:
+
+```bash
+grep 2026-10-31 "/Users/<you>/Library/Application Support/memo-router/processed.txt"
+```
+
+It accepts `--config-path`, like `bb process`, and says so if the memo is not in
+the manifest. It does not touch the original reminder or note, so if that still
+exists, you will end up with two. Deleting a reminder or note never changes the
+manifest either, so processing a memo again is always your choice.
 
 ### Routing notes to an account
 
@@ -113,7 +135,7 @@ processed on Tuesday still treats "tomorrow" as Tuesday.
 | `morning`, `afternoon`, `evening`, `night` after a date, e.g. `tomorrow morning` | That day at 09:00, 14:00, 18:00 or 20:00 |
 | `tonight`, `this afternoon`, `in the morning` | The same times, on the next day that time is still ahead |
 | `at 3 pm`, `at 3:30 p.m.`, `at 4.55 pm` | That time on the date spoken. With no date, today if it is still ahead, otherwise tomorrow. |
-| `at 3`, `at 3:30` | See below |
+| `at 3`, `at 3:30`, `at 3 o'clock` | See below |
 
 For an hour with no am or pm, Memo Router finds the first day on which 3:00 or
 15:00 is still ahead, and if both are, takes the one between 07:00 and 18:59. A
@@ -129,7 +151,12 @@ part of the day decides it instead, so "tomorrow evening at 8" is 20:00.
 To avoid reading numbers as times, an hour with no am or pm counts only before
 the end of a sentence, punctuation, or "to". "Remind me to look at 3 options"
 gets no time, and neither does "tomorrow at 3 with Dana", which is all-day
-tomorrow with "at 3" left in the title. Say "3 pm" to be certain.
+tomorrow with "at 3" left in the title. Say "3 pm" or "3 o'clock" to be certain.
+
+Say the part of the day before the time. "Tomorrow evening at 9" is 21:00, but
+"tomorrow at 9 in the evening" is all-day tomorrow, with "at 9 in the evening"
+left in the title. An hour that Whisper writes as a word is not read either, so
+"tomorrow at three" is all-day tomorrow with "at three" left in the title.
 
 Only the first date in a memo is used; a second one stays in the title.
 Recurring phrases such as "every Friday" are not supported and are treated as

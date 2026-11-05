@@ -10,8 +10,11 @@
                      (str "gui/" (str/trim (:out (shell {:out :string} "id" "-u")))))
                    (defn service [] (str (domain) "/" label)))
 
-         process {:doc  "Process new memos"
-                  :task (exec 'memo-router.core/-main)}
+         process    {:doc  "Process new memos"
+                     :task (exec 'memo-router.core/-main)}
+         re-process {:doc "Re-process a memo"
+                     :task (exec 'memo-router.core/re-process)}
+
          fmt     {:doc "Format code"
                   :task (shell "cljfmt" "fix" "src" "test" "scripts")}
          lint    {:doc "Run linter"

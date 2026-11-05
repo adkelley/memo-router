@@ -51,3 +51,29 @@
       (testing "trims whitespace around rel-path"
         (manifest/mark-processed! path "  2026-11-01/09-15-00.m4a \n")
         (is (contains? (manifest/read-processed path) "2026-11-01/09-15-00.m4a"))))))
+
+(deftest unmark-processed!-test
+  (fs/with-temp-dir [dir {}]
+    (let [path (str (fs/path dir "processed.txt"))]
+
+      (testing "returns false and creates nothing when there is no manifest"
+        (is (false? (manifest/unmark-processed! path "2026-10-31/08-00-00.m4a")))
+        (is (not (fs/exists? path))))
+
+      (testing "returns false and leaves the file alone for an unknown memo"
+        (spit path "2026-10-31/08-00-00.m4a\n")
+        (is (false? (manifest/unmark-processed! path "2026-10-31/09-00-00.m4a")))
+        (is (= "2026-10-31/08-00-00.m4a\n" (slurp path))))
+
+      (testing "removes every line for the memo and keeps the others in order"
+        (spit path (str "2026-10-31/08-00-00.m4a\n"
+                        "  2026-10-31/09-00-00.m4a \n"
+                        "2026-10-31/10-00-00.m4a\n"
+                        "2026-10-31/09-00-00.m4a\n"))
+        (is (true? (manifest/unmark-processed! path " 2026-10-31/09-00-00.m4a")))
+        (is (= "2026-10-31/08-00-00.m4a\n2026-10-31/10-00-00.m4a\n" (slurp path))))
+
+      (testing "mark-processed! still appends on a new line afterwards"
+        (manifest/mark-processed! path "2026-10-31/11-00-00.m4a")
+        (is (= #{"2026-10-31/08-00-00.m4a" "2026-10-31/10-00-00.m4a" "2026-10-31/11-00-00.m4a"}
+               (manifest/read-processed path)))))))

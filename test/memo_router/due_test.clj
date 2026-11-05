@@ -89,6 +89,16 @@
       morning   "Remind me to call at 3 tomorrow."  "2026-11-03T15:00"
       morning   "Remind me at 3:30 to stretch."     "2026-11-02T15:30"))
 
+  (testing "o'clock marks a time, whatever follows it"
+    (are [text due] (= due (due-at morning text))
+      "Remind me to call at 3 o'clock."            "2026-11-02T15:00"
+      "Remind me to call at 3 o’clock."            "2026-11-02T15:00"
+      "Remind me to call at 3 oclock."             "2026-11-02T15:00"
+      "Remind me tomorrow at 9 o'clock to call."   "2026-11-03T09:00"
+      "Remind me at 3 o'clock about the meeting."  "2026-11-02T15:00")
+    (is (= "Remind me about the meeting."
+           (remaining-text morning "Remind me at 3 o'clock about the meeting."))))
+
   (testing "a number that is not a time stays in the text"
     (is (nil? (due/extract-due morning "Remind me to look at 3 options.")))
     (is (= "2026-11-03" (due-at morning "Remind me tomorrow to look at 3 options.")))
@@ -125,7 +135,8 @@
   (testing "a bare hour takes the side of the day that was spoken"
     (are [text due] (= due (due-at morning text))
       "Remind me tomorrow evening at 8 to call." "2026-11-03T20:00"
-      "Remind me tomorrow morning at 8 to call." "2026-11-03T08:00"))
+      "Remind me tomorrow morning at 8 to call." "2026-11-03T08:00"
+      "Remind me tomorrow morning at 11 o'clock." "2026-11-03T11:00"))
 
   (testing "alone, without this or in the, it is an ordinary word"
     (is (nil? (due/extract-due morning "Remind me to take my morning pills.")))))

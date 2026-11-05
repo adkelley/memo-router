@@ -47,7 +47,7 @@
   #"(?i)\bat\s+(\d{1,2})(?:[:.]([0-5]\d))?\s*([ap])\.?m\b\.?")
 
 (def ^:private bare-clock-pattern
-  #"(?i)\bat\s+(\d{1,2})(?:[:.]([0-5]\d))?(?=\s*(?:$|[.,!?](?!\d)|to\b))")
+  #"(?i)\bat\s+(\d{1,2})(?:[:.]([0-5]\d))?(?:\s+o['’]?clock\b|(?=\s*(?:$|[.,!?](?!\d)|to\b)))")
 
 (defn- clock-time [hour minute meridiem]
   (let [hour (parse-long hour)]

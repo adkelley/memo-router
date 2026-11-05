@@ -21,3 +21,16 @@
   (let [rel-path (str/trim rel-path)]
     (fs/create-dirs (fs/parent path))
     (spit path (str rel-path "\n") :append true)))
+
+(defn unmark-processed!
+  "Removes rel-path from the manifest at path, so the next run handles that memo
+  again.  Returns true if it was removed, or false if it wasn't listed or the manifest
+  doesn't exist yet"
+  [path rel-path]
+  (let [rel-path (str/trim rel-path)]
+    (if (contains? (read-processed path) rel-path)
+      (do (->> (fs/read-all-lines path)
+               (remove #(= rel-path (str/trim %)))
+               (fs/write-lines path))
+          true)
+      false)))

@@ -70,6 +70,18 @@
         (println "processed:" (count memos) "memos" tally))
       tally)))
 
+(defn re-process
+  "Removes a memo from the manifest, so the next run handles it again."
+  {:org.babashka/cli {:spec (assoc (select-keys cli-spec [:config-path])
+                                   :memo {:desc "Memo path, e.g. 2026-10-31/11-23-32.m4a"})
+                      :args->opts [:memo]
+                      :require [:memo]}}
+  [{:keys [config-path memo]}]
+  (let [{:keys [manifest]} (config/load-config config-path)]
+    (if (manifest/unmark-processed! manifest memo)
+      (println memo "will be processed on the next run")
+      (println memo "is not in the manifest"))))
+
 (defn -main
   {:org.babashka/cli {:spec cli-spec}}
   [opts]

@@ -12,66 +12,31 @@ Each stage works on its own and has tests that mock its external tool.
 - `manifest` – read the processed set and append memos once handled
 - `whisper` – transcribe a memo with `mlx_whisper` into a trimmed string
 - `classify` – keyword rules turn a transcript into
-  `{:type :reminder|:note :title … :body …}`
+  `{:type :reminder|:note :title … :body …}`, plus `:due` on a reminder with a
+  date or time and `:destination` on a note with a spoken keyword
 - `due` – read dates and times from a reminder's transcript, relative to the
   memo's recording time, and remove the phrase from its title
 - `reminders` – create a reminder in a named list through `osascript`, timed
   or all-day when it has a due date
-- `notes` – create a note as escaped HTML in a named account and folder
-- Test runner (`bb test`) and formatter task (`bb fmt`)
+- `notes` – create a note as escaped HTML in a named account and folder, or
+  the account chosen by a spoken keyword from `:notes :routes`
+- `config` – load `config.edn` and report every problem before a run starts
+- `core` – `bb process` wires the stages together, with `--dry-run`, and a
+  failed memo is logged and retried on the next run while the others continue
+- `bb re-process <memo>` removes a memo from the manifest, so the next run
+  handles it again
+- launchd job from a template, managed with the `bb agent:*` tasks
+- Test runner (`bb test`), formatter (`bb fmt`) and linter (`bb lint`) tasks
+- GitHub Actions CI: format check, lint and tests on every push
 
 ## Next
 
-### 1. `core/-main`
+### 1. Spoken shopping list
 
-Wire the stages together:
-
-    new memos → transcribe → (skip if blank) → classify
-              → add reminder or note → mark processed
-
-- **CLI** with a babashka.cli spec on `-main`:
-  - `--config` – path to `config.edn` (default `config.edn`); launchd passes
-    an absolute path
-  - `--dry-run` – transcribe and classify, log what would happen, but create
-    nothing and leave the manifest untouched
-- **Config loading** with `clojure.edn/read-string`, failing early with a clear
-  `ex-info` when a required key is missing or blank, or `:memo-dir` does not
-  exist (note `(fs/exists? "")` is true)
-- **Errors per memo** – a failure (e.g. `-1728`) is logged and the memo is left
-  unprocessed for the next run; the other memos still run
-- **Blank transcripts** – skip creating anything, but mark the memo processed
-  so silence is not retried forever
-- **Logging** with `clojure.tools.logging`: memo names and routing decisions,
-  never transcript text
-
-### 2. `bb reprocess <memo>`
-
-Mark a memo as unprocessed so the next run handles it again, e.g. after
-deleting a reminder by mistake or switching to a better model.
-
-    bb reprocess 2026-10-31/11-23-32.m4a
-
-- `manifest/unmark-processed!` – rewrite the manifest without that line;
-  return `true` if a line was removed, `false` otherwise (typo, or no manifest
-  yet), and never create an empty manifest
-- `core/reprocess` – load config like `-main` (including `--config`), call
-  `unmark-processed!`, and log whether the memo was found
-- `bb.edn` task using `exec`, with the memo as a positional argument
-  (`:args->opts [:memo]`) so no `--memo` flag is needed
-- Deleting or completing a reminder or note never changes the manifest on its
-  own: memo-router only writes to Reminders and Notes, so reprocessing is
-  always an explicit choice
-
-### 3. launchd job
-
-- `~/Library/LaunchAgents/com.alexkelley.memo-router.plist` running
-  `bb process --config <absolute path>` every 300 seconds
-- `PATH` including `~/.local/bin` and `/opt/homebrew/bin`, so `mlx_whisper`
-  can find `ffmpeg`
-- stdout and stderr to `~/Library/Logs/memo-router.log`
-- Run once by hand first to approve the Automation prompts for Reminders and
-  Notes
-- Optionally a `bb install` task that writes the plist and runs `launchctl`
+Add each item from "Remind me to add pickles, tomatoes, and flour to my
+shopping list" to the Groceries list. Items go through a Shortcut, because
+Reminders sorts those into grocery sections and leaves items added by
+`osascript` uncategorized.
 
 ## Later
 
@@ -97,10 +62,29 @@ deleting a reminder by mistake or switching to a better model.
 - A smarter `next <weekday>`: said on a Monday, "next Friday" could mean the
   Friday of next week rather than this one
 - Spelled-out hours ("at three"), if transcripts turn out to need them
-- Recurring reminders ("every Friday")
+- Recurring reminders ("every Friday"), which need EventKit (see below)
+
+### Reminders through EventKit
+
+- Explore a small Swift helper that creates reminders with EventKit, called
+  from the `reminders` namespace in place of `osascript`. `EKRecurrenceRule`
+  can repeat a reminder on several weekdays ("every Sunday and Wednesday"),
+  which the Reminders scripting dictionary has no way to set
+- Check first that a command-line helper can get Reminders access when run by
+  launchd
+- Test whether an item saved through EventKit is sorted into a Groceries
+  section. EventKit has no public API for sections, so the shopping list may
+  need to stay on Shortcuts
+- EventKit does not cover Notes, which stays on `osascript`
 
 ### Robustness
 
+- Tests for note routing: `note-route`, `classify` with routes, and a routed
+  note end to end in `core_test`
+- Validate `:notes :routes` in `config/problems`, so a bad route is reported
+  at startup instead of as a failed memo
+- Switch `core` from `println` to `clojure.tools.logging`: memo names and
+  routing decisions, never transcript text
 - Startup check that `:reminders :list` and `:notes :folder` exist, using the
   same `osascript` name listings used while debugging
 - Clearer script errors than `Can't get object (-1728)`, e.g. "No Reminders
@@ -113,6 +97,11 @@ deleting a reminder by mistake or switching to a better model.
 - Optional `:account` for Reminders, matching Notes, if lists ever repeat
   across accounts
 
+### Tooling
+
+- Optional `bb agent:install` task that fills in the plist template, replacing
+  the `sed` command in the README
+
 ### Transcription
 
 - `:initial-prompt` in the `:whisper` config. A sentence-style prompt fixed
@@ -121,7 +110,5 @@ deleting a reminder by mistake or switching to a better model.
 
 ### Documentation
 
-- README section on the processed manifest: created on first run, one line
-  per memo, and how to reprocess
 - Docstring tidy-ups: `memo-files` continuation indent; `add-note!` should
   mention `:account`
