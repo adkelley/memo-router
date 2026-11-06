@@ -26,24 +26,32 @@
   (str/split-lines (slurp (str (fs/path dir "args.txt")))))
 
 (deftest reminder-command-test
-  (testing "runs a JXA script with account, list, title, and body as separate arguments"
+  (testing "runs a JXA script with account, list, title, body and priority as separate arguments"
     (let [[bin lang-flag lang e-flag script & args]
           (reminders/reminder-command {:account "iCloud" :list "Inbox"} reminder)]
       (is (= "/usr/bin/osascript" bin))
       (is (= ["-l" "JavaScript" "-e"] [lang-flag lang e-flag]))
       (is (str/includes? script "Application('Reminders')"))
-      (is (= ["iCloud" "Inbox" "Take out the trash" "Remind me to take out the trash."] args))))
+      (is (= ["iCloud" "Inbox" "Take out the trash" "Remind me to take out the trash." ""] args))))
 
   (testing "keeps memo text out of the script source"
     (let [script (nth (reminders/reminder-command {:list "Inbox"} reminder) 4)]
       (is (not (str/includes? script "Take out the trash")))))
 
-  (testing "passes \"\" for a missing account, list or body, so the default list is used"
-    (is (= ["" "" "Take out the trash" ""]
+  (testing "passes \"\" for a missing account, list, body or priority"
+    (is (= ["" "" "Take out the trash" "" ""]
            (drop 5 (reminders/reminder-command {} {:title "Take out the trash"})))))
 
   (testing "leaves out the due arguments when there is no :due"
-    (is (= 4 (count (drop 5 (reminders/reminder-command {:list "Inbox"} reminder))))))
+    (is (= 5 (count (drop 5 (reminders/reminder-command {:list "Inbox"} reminder))))))
+
+  (testing "passes the priority as a string, before any due arguments"
+    (is (= ["Inbox" "Take out the trash" "" "1" "2026-11-03T15:00" "false"]
+           (drop 6 (reminders/reminder-command
+                    {:list "Inbox"}
+                    {:title "Take out the trash"
+                     :priority 1
+                     :due (LocalDateTime/of 2026 11 3 15 0)})))))
 
   (testing "a timed reminder passes the date-time, and false for all-day"
     (is (= ["2026-11-03T15:00" "false"]

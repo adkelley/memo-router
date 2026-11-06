@@ -231,6 +231,25 @@ Only the first date in a memo is used; a second one stays in the title.
 Recurring phrases such as "every Friday" are not supported and are treated as
 the next Friday.
 
+### Priority on reminders
+
+Say a priority anywhere in a reminder, and it is set on the reminder and left out
+of the title. "Remind me to call Dana, high priority" becomes "Call Dana", marked
+High.
+
+| Say | Priority |
+|---|---|
+| `high priority`, `high-priority`, `urgent`, `urgently` | High |
+| `medium priority` | Medium |
+| `low priority` | Low |
+
+It works alongside dates and lists, and it can open the memo: "Home list, high
+priority, do the dishes tomorrow at 3" and "Urgent, remind me to call Dana" both
+work. A note keeps its words, so "Urgent matters for the board" stays a note.
+
+The word "urgent" counts wherever it appears in a reminder, so "Remind me to read
+the urgent email" becomes "Read the email", marked High.
+
 ## Running automatically
 
 [`launchd/memo-router.plist.template`](launchd/memo-router.plist.template)

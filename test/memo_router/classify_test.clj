@@ -111,6 +111,31 @@
       reminder-routes "Remind me to do the dishes."
       nil             "Home list, remind me to do the dishes.")))
 
+(deftest extract-priority-test
+  (testing "reads each level, ignoring case"
+    (are [text priority] (= priority (:priority (classify/extract-priority text)))
+      "Remind me to call Dana, high priority."   1
+      "Remind me to call Dana, HIGH PRIORITY."   1
+      "Remind me to call Dana, medium priority." 5
+      "Remind me to call Dana, low priority."    9
+      "Remind me to call Dana, high-priority."   1
+      "Urgent, remind me to call Dana."          1
+      "Remind me urgently to call Dana."         1))
+
+  (testing "removes the phrase wherever it is, with its punctuation"
+    (are [text remaining] (= remaining (:text (classify/extract-priority text)))
+      "Remind me to call Dana, high priority."      "Remind me to call Dana"
+      "Remind me to call Dana. Low priority."       "Remind me to call Dana"
+      "High priority, remind me to call Dana."      "remind me to call Dana."
+      "Remind me, high priority, to call Dana."     "Remind me to call Dana."
+      "Remind me to high priority call Dana today." "Remind me to call Dana today."))
+
+  (testing "nil when there is no priority phrase"
+    (are [text] (nil? (classify/extract-priority text))
+      "Remind me to call Dana."
+      "Remind me to review priority items."
+      "Remind me to check the high school schedule.")))
+
 (deftest noise?-test
   (testing "true for a blank or one-word transcript"
     (are [text] (true? (classify/noise? text))
@@ -227,6 +252,39 @@
     (is (= :reminder
            (:type (classify/classify {:notes {"Home" {:account "Home"}} :reminders reminder-routes}
                                      now "Home list, do the dishes.")))))
+
+  (testing "a reminder with a priority phrase gets :priority, and keeps the full :body"
+    (is (= {:type     :reminder
+            :title    "Call Dana"
+            :body     "Remind me to call Dana, high priority."
+            :priority 1}
+           (classify/classify nil now "Remind me to call Dana, high priority."))))
+
+  (testing "a priority phrase can open a reminder"
+    (are [text] (= [:reminder "Call Dana" 1]
+                   ((juxt :type :title :priority) (classify/classify nil now text)))
+      "High priority, remind me to call Dana."
+      "Urgent, remind me to call Dana."
+      "Urgent. Remind me to call Dana."))
+
+  (testing "priority works alongside a due date and a list"
+    (is (= {:type        :reminder
+            :title       "Do the dishes"
+            :body        "Home list, high priority, do the dishes tomorrow at 3."
+            :due         (LocalDateTime/of 2026 11 3 15 0)
+            :priority    1
+            :destination {:list "Home"}}
+           (classify/classify {:reminders reminder-routes} now
+                              "Home list, high priority, do the dishes tomorrow at 3."))))
+
+  (testing "a reminder with no priority phrase gets no :priority"
+    (is (not (contains? (classify/classify nil now "Remind me to call Dana.") :priority))))
+
+  (testing "a note keeps its words, and never gets :priority"
+    (is (= {:type  :note
+            :title "Urgent matters for the board"
+            :body  "Urgent matters for the board."}
+           (classify/classify nil now "Urgent matters for the board."))))
 
   (testing "a note never gets :due"
     (is (= {:type  :note

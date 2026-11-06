@@ -12,10 +12,10 @@ Each stage works on its own and has tests that mock its external tool.
 - `manifest` – read the processed set and append memos once handled
 - `whisper` – transcribe a memo with `mlx_whisper` into a trimmed string
 - `classify` – keyword rules turn a transcript into
-  `{:type :reminder|:note :title … :body …}`, plus `:due` on a reminder with a
-  date or time and `:destination` on a reminder naming a list or a note with a
-  spoken keyword, or into `{:type :shopping :items … :body …}` for a shopping
-  request
+  `{:type :reminder|:note :title … :body …}`, plus `:due` and `:priority` on a
+  reminder that says so, and `:destination` on a reminder naming a list or a note
+  with a spoken keyword, or into `{:type :shopping :items … :body …}` for a
+  shopping request
 - `shopping` – add each item to the shopping list through a Shortcut, so
   Reminders sorts it into a grocery section
 - Blank or one-word transcripts are skipped, since Whisper invents words like
@@ -23,8 +23,8 @@ Each stage works on its own and has tests that mock its external tool.
 - `due` – read dates and times from a reminder's transcript, relative to the
   memo's recording time, and remove the phrase from its title
 - `reminders` – create a reminder in a named account and list through
-  `osascript`, timed or all-day when it has a due date, or the list chosen by a
-  spoken prefix from `:reminders :routes`
+  `osascript`, timed or all-day when it has a due date, with a priority when one
+  is spoken, or the list chosen by a spoken prefix from `:reminders :routes`
 - `notes` – create a note as escaped HTML in a named account and folder, or
   the account chosen by a spoken keyword from `:notes :routes`
 - `config` – load `config.edn` and report every problem before a run starts
@@ -78,12 +78,6 @@ sees the corrected text.
 - Spelled-out hours ("at three"), if transcripts turn out to need them
 - Recurring reminders ("every Friday"), which need EventKit (see below)
 
-### Priority
-
-- Read "high priority" or "urgent" from a reminder, remove it from the title, and
-  set `:priority`. Reminders scripting supports this directly: 0 is none, 1–4
-  high, 5 medium and 6–9 low, so it needs no EventKit
-
 ### Reminders through EventKit
 
 - Explore a small Swift helper that creates reminders with EventKit, called
@@ -114,7 +108,9 @@ sees the corrected text.
   same `osascript` name listings used while debugging
 - Clearer script errors than `Can't get object (-1728)`, e.g. "No Reminders
   list named Inbox"
-- `clojure.spec` for the config map if the hand-written checks grow
+- `clojure.spec` for the config map if the hand-written checks grow, and for the
+  reminder and note maps if an LLM starts producing them, to validate its output
+  before anything is created
 - iCloud placeholders: find `.name.m4a.icloud` files and fetch them with
   `brctl download` instead of silently skipping them
 - `whisper`: throw `ex-info` (with `:file` and `:out-dir`) when `mlx_whisper`

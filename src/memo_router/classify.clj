@@ -4,6 +4,20 @@
 
 (def reminder-pattern #"(?i)^\s*(remind me( to)?|reminder:?|don[’']t forget( to)?)\b:?\s*")
 
+(def ^:private priority-pattern
+  #"(?i)[,.;]?\s*\b(?:(high|medium|low)[\s-]+priority|urgent(?:ly)?)\b[:,.]?(?=\s|$)")
+
+(def ^:private priorities {"high" 1 "medium" 5 "low" 9})
+
+(defn extract-priority
+  "Returns {:priority <number> :text <text without the phrase>} for a phrase like
+  \"high priority\" or \"urgent\" in text, or nil if there is none. The numbers
+  are the ones the Reminders app sets: 1 high, 5 medium, 9 low."
+  [text]
+  (when-let [[phrase level] (re-find priority-pattern text)]
+    {:priority (priorities (str/lower-case (or level "high")))
+     :text     (due/without text phrase)}))
+
 (defn- route-pattern [keyword suffix]
   (re-pattern (str "(?i)^\\s*" (java.util.regex.Pattern/quote keyword) suffix "[:,.]?\\s*")))
 
@@ -73,14 +87,17 @@
          (mapv capitalize-first))))
 
 (defn- reminder-memo [routes now text]
-  (let [{:keys [destination] :as route} (reminder-route routes text)
-        task  (:text route text)
+  (let [{:keys [priority] :as ranked} (extract-priority text)
+        spoken (:text ranked text)
+        {:keys [destination] :as route} (reminder-route routes spoken)
+        task  (:text route spoken)
         {:keys [due] :as found} (due/extract-due now task)
         title (reminder-title (:text found task))]
     (cond-> {:type :reminder
              :title (if (str/blank? title) (reminder-title task) title)
              :body text}
       due (assoc :due due)
+      priority (assoc :priority priority)
       destination (assoc :destination destination))))
 
 (defn- note-memo [routes text]
@@ -95,17 +112,19 @@
   A shopping request returns {:type :shopping :items :body}; the others return
   {:type :title :body}. A reminder with a date or time phrase (see
   due/extract-due, read relative to now) also gets :due, and its title omits
-  the phrase. A reminder starting with a list from (:reminders routes) (see
+  the phrase. A reminder with a priority phrase (see extract-priority) also gets :priority.
+  A reminder starting with a list from (:reminders routes) (see
   reminder-route), or a note starting with a keyword from (:notes routes) (see
   note-route), also gets :destination, and its title omits the prefix. routes
   may be nil."
   [{:keys [notes reminders]} now text]
-  (let [items (shopping-items text)]
+  (let [items  (shopping-items text)
+        spoken (:text (extract-priority text) text)]
     (cond
       items
       {:type :shopping :items items :body text}
 
-      (or (reminder-route reminders text) (reminder? text))
+      (or (reminder-route reminders spoken) (reminder? spoken))
       (reminder-memo reminders now text)
 
       :else

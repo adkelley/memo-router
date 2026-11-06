@@ -102,7 +102,7 @@
       (let [config (test-config dir)]
         (add-memo! dir "2026-11-01/09-00-00.m4a" "Remind me to call Dana.")
         (is (= :reminder (core/process-memo! config false "2026-11-01/09-00-00.m4a")))
-        (is (= ["iCloud | Inbox | Call Dana | Remind me to call Dana."] (calls (fs/path dir "reminders"))))
+        (is (= ["iCloud | Inbox | Call Dana | Remind me to call Dana. | "] (calls (fs/path dir "reminders"))))
         (is (= [] (calls (fs/path dir "notes"))))
         (is (= #{"2026-11-01/09-00-00.m4a"} (processed config))))))
 
@@ -111,7 +111,7 @@
       (let [config (test-config dir)]
         (add-memo! dir "2026-11-02/18-30-12.m4a" "Remind me to call Dana tomorrow at 3.")
         (is (= :reminder (core/process-memo! config false "2026-11-02/18-30-12.m4a")))
-        (is (= ["iCloud | Inbox | Call Dana | Remind me to call Dana tomorrow at 3. | 2026-11-03T15:00 | false"]
+        (is (= ["iCloud | Inbox | Call Dana | Remind me to call Dana tomorrow at 3. |  | 2026-11-03T15:00 | false"]
                (calls (fs/path dir "reminders")))))))
 
   (testing "a date alone creates an all-day reminder"
@@ -119,7 +119,7 @@
       (let [config (test-config dir)]
         (add-memo! dir "2026-11-02/18-30-12.m4a" "Remind me to call Dana tomorrow.")
         (core/process-memo! config false "2026-11-02/18-30-12.m4a")
-        (is (= ["iCloud | Inbox | Call Dana | Remind me to call Dana tomorrow. | 2026-11-03T00:00 | true"]
+        (is (= ["iCloud | Inbox | Call Dana | Remind me to call Dana tomorrow. |  | 2026-11-03T00:00 | true"]
                (calls (fs/path dir "reminders")))))))
 
   (testing "a memo path with no time in it falls back to the current time"
@@ -128,7 +128,7 @@
             tomorrow (.atStartOfDay (.plusDays (LocalDate/now) 1))]
         (add-memo! dir "imported/odd-name.m4a" "Remind me to call Dana tomorrow.")
         (core/process-memo! config false "imported/odd-name.m4a")
-        (is (= [(str "iCloud | Inbox | Call Dana | Remind me to call Dana tomorrow. | " tomorrow " | true")]
+        (is (= [(str "iCloud | Inbox | Call Dana | Remind me to call Dana tomorrow. |  | " tomorrow " | true")]
                (calls (fs/path dir "reminders")))))))
 
   (testing "anything else becomes a note"
@@ -170,7 +170,15 @@
       (let [config (test-config dir)]
         (add-memo! dir "2026-11-01/09-00-00.m4a" "Home list, remind me to do the dishes.")
         (is (= :reminder (core/process-memo! config false "2026-11-01/09-00-00.m4a")))
-        (is (= ["iCloud | Home | Do the dishes | Home list, remind me to do the dishes."]
+        (is (= ["iCloud | Home | Do the dishes | Home list, remind me to do the dishes. | "]
+               (calls (fs/path dir "reminders")))))))
+
+  (testing "a priority reaches osascript, and the title omits the phrase"
+    (fs/with-temp-dir [dir {}]
+      (let [config (test-config dir)]
+        (add-memo! dir "2026-11-01/09-00-00.m4a" "Remind me to call Dana, high priority.")
+        (core/process-memo! config false "2026-11-01/09-00-00.m4a")
+        (is (= ["iCloud | Inbox | Call Dana | Remind me to call Dana, high priority. | 1"]
                (calls (fs/path dir "reminders")))))))
 
   (testing "a route's own account replaces the top-level one"
@@ -178,7 +186,7 @@
       (let [config (test-config dir)]
         (add-memo! dir "2026-11-01/09-00-00.m4a" "GCA list, remind me to call Dana.")
         (core/process-memo! config false "2026-11-01/09-00-00.m4a")
-        (is (= ["GCA | Tasks | Call Dana | GCA list, remind me to call Dana."]
+        (is (= ["GCA | Tasks | Call Dana | GCA list, remind me to call Dana. | "]
                (calls (fs/path dir "reminders")))))))
 
   (testing "a note starting with a keyword goes to that account"

@@ -55,7 +55,9 @@
       (LocalTime/of (+ (mod hour 12) (if (= "p" (str/lower-case meridiem)) 12 0))
                     (if minute (parse-long minute) 0)))))
 
-(defn- without [text phrase]
+(defn without
+  "Removes phrase from text, tidying the spaces and punctuation left behind."
+  [text phrase]
   (-> text
       (str/replace-first phrase "")
       (str/replace #"\s+" " ")
