@@ -45,6 +45,17 @@
   (testing "leaves out the due arguments when there is no :due"
     (is (= 5 (count (drop 5 (reminders/reminder-command {:list "Inbox"} reminder))))))
 
+  (testing "adds a link to the notes after a blank line"
+    (is (= "Remind me to take out the trash.\n\nhttps://example.com"
+           (nth (reminders/reminder-command {:list "Inbox"}
+                                            (assoc reminder :link "https://example.com"))
+                8))))
+
+  (testing "a link with no body becomes the whole notes"
+    (is (= "\n\nhttps://example.com"
+           (nth (reminders/reminder-command {} {:title "Take out the trash" :link "https://example.com"})
+                8))))
+
   (testing "passes the priority as a string, before any due arguments"
     (is (= ["Inbox" "Take out the trash" "" "1" "2026-11-03T15:00" "false"]
            (drop 6 (reminders/reminder-command

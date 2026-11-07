@@ -5,6 +5,7 @@
    [memo-router.config :as config]
    [memo-router.due :as due]
    [memo-router.inbox :as inbox]
+   [memo-router.links :as links]
    [memo-router.notes :as notes]
    [memo-router.shopping :as shopping]
    [memo-router.reminders :as reminders]
@@ -41,7 +42,7 @@
       (let [now    (or (due/memo-time rel-path) (LocalDateTime/now))
             routes {:notes     (get-in config [:notes :routes])
                     :reminders (get-in config [:reminders :routes])}
-            {:keys [type] :as memo} (classify/classify routes now transcript)]
+            {:keys [type] :as memo} (links/add-link (classify/classify routes now transcript))]
         (when-not dry-run
           (route! config memo)
           (manifest/mark-processed! manifest rel-path))

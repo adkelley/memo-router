@@ -25,6 +25,9 @@ Each stage works on its own and has tests that mock its external tool.
 - `reminders` – create a reminder in a named account and list through
   `osascript`, timed or all-day when it has a due date, with a priority when one
   is spoken, or the list chosen by a spoken prefix from `:reminders :routes`
+- `links` and `spotify` – a route with `:link :spotify` adds a Spotify search
+  link to the reminder's notes. `links/link` is a multimethod, so another service
+  is its own namespace and one `defmethod`
 - `notes` – create a note as escaped HTML in a named account and folder, or
   the account chosen by a spoken keyword from `:notes :routes`
 - `config` – load `config.edn` and report every problem before a run starts
@@ -123,18 +126,20 @@ sees the corrected text.
 
 ### Links on reminders
 
-- A link template on a reminder route, using any site's search URL, so "Spotify
-  list, remind me to look into Pink Floyd" adds
-  `https://open.spotify.com/search/Pink%20Floyd` to the reminder's notes. A Books
-  route could use `https://www.amazon.com/s?k={query}&i=stripbooks` or
-  `https://www.goodreads.com/search?q={query}`. This needs no API keys.
-  Reminders scripting has no URL field, so the link goes in the body. Check that
-  it is tappable there
-- Getting "Pink Floyd" out of "look into Pink Floyd" is the hard part: a few
-  stripped phrases to start with, or an LLM later
-- Direct links, as a later step: Spotify's Web API for artists and albums, using
-  a client ID and secret (the user has the Premium it requires), and possibly
-  Open Library for books
+- More services behind `links/link`, each in its own namespace with one
+  `defmethod`: book search links such as Goodreads
+  (`https://www.goodreads.com/search?q=…`) or Amazon, and Wikipedia
+- Direct Spotify links to the exact artist, album or song, through Spotify's Web
+  API with a client ID and secret (the user has the Premium it requires). Search
+  still works for Development Mode apps, at 10 results per request. The lookup
+  belongs in `spotify.clj`, behind `links/add-link`, falling back to the search
+  link if it fails
+- Add songs to a Spotify playlist, such as "Music to review". This needs a
+  one-time login as the user and a stored refresh token, and uses
+  `POST /playlists/{id}/items`
+- Fill in Reminders' URL field instead of the notes, if Apple ever lets scripts
+  or EventKit set it. Today neither can
+- NotebookLM, probably as an action after `route!` rather than a link
 
 ### Transcription
 

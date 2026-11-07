@@ -97,7 +97,9 @@
       "Home list, remind me to do the dishes." "remind me to do the dishes."
       "Home list. Remind me to do the dishes." "Remind me to do the dishes."
       "home list: do the dishes."              "do the dishes."
-      "HOME LIST remind me to do the dishes"   "remind me to do the dishes"))
+      "HOME LIST remind me to do the dishes"   "remind me to do the dishes"
+      ;; Whisper sometimes hears "list" as "lists"
+      "Home lists. Remind me to do the dishes." "Remind me to do the dishes."))
 
   (testing "a name can be several words, and carry its own account"
     (is (= {:account "ADK" :list "Tasks"}
@@ -106,7 +108,7 @@
   (testing "nil without \"list\", for an unknown name, or with no routes"
     (are [routes text] (nil? (classify/reminder-route routes text))
       reminder-routes "Home, remind me to do the dishes."
-      reminder-routes "Home lists are useful."
+      reminder-routes "Home listings are up this week."
       reminder-routes "Garage list, remind me to sweep."
       reminder-routes "Remind me to do the dishes."
       nil             "Home list, remind me to do the dishes.")))

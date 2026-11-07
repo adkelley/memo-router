@@ -43,7 +43,7 @@ holds machine-specific paths, so create it yourself with this shape:
 | `:whisper :model` | Hugging Face model used for transcription. Downloaded on first use into `~/.cache/huggingface/hub/`. |
 | `:reminders :account` | Optional. Reminders account (e.g. `"iCloud"`) that holds `:list`. Omit it to search all accounts, which is fine unless the same list name exists in more than one. |
 | `:reminders :list` | Optional. Reminders list for memos classified as reminders. Must match an existing list name exactly; omit it to use your default list. |
-| `:reminders :routes` | Optional. Map of spoken name to destination, `{:list "..." :account "..."}`, for sending a reminder to another list (see [Routing reminders to a list](#routing-reminders-to-a-list)). `:list` is required. Without `:account`, the route uses the top-level `:account`. |
+| `:reminders :routes` | Optional. Map of spoken name to destination, `{:list "..." :account "..."}`, for sending a reminder to another list (see [Routing reminders to a list](#routing-reminders-to-a-list)). `:list` is required. Without `:account`, the route uses the top-level `:account`. Add `:link :spotify` to put a Spotify search link in the reminder's notes (see [Spotify links](#spotify-links)). |
 | `:notes :account` | Recommended. Notes account (e.g. `"iCloud"`) that notes are created in. Omit it to use Notes' default account, but that can change when accounts are added or the setting changes, so name it explicitly if you have work or client accounts. |
 | `:notes :folder` | Optional. Folder within that account for everything else. Must match an existing folder name exactly; omit it to use the account's default folder. Folder names can repeat across accounts, which is why the lookup is scoped to one account. |
 | `:notes :routes` | Optional. Map of spoken keyword to destination, `{:account "..." :folder "..."}`, for sending a note to another account (see [Routing notes to an account](#routing-notes-to-an-account)). `:account` is required. Without `:folder`, the note goes to that account's default folder, not the top-level `:folder`. |
@@ -159,6 +159,31 @@ osascript -l JavaScript -e 'Application("Reminders").accounts().map(a => a.name(
 
 Whisper can mishear these phrases: "home list" sometimes comes through as
 "homeless", which won't match.
+
+### Spotify links
+
+A route with `:link :spotify` adds a Spotify search link to each reminder's
+notes, so one tap opens the results:
+
+```clojure
+"Spotify" {:list "Spotify" :link :spotify}
+```
+
+> Spotify list, remind me to look into the album Animals by Pink Floyd.
+
+This creates "Look into the album Animals by Pink Floyd", with
+`https://open.spotify.com/search/Animals%20Pink%20Floyd` in its notes. The search
+leaves out a leading "look into", "look up", "listen to", "check out", "search
+for" or "find", a kind word like "the album", "song", "artist" or "band", and
+"by" or "from".
+
+The link searches everything, with no artist, album or song filter. Spotify's
+website understands a filter, but the iPhone app reads it as the search text, so
+the link would search for "albums". Reminders also has a URL field, but it can't
+be set from a script, so the link goes in the notes, where it can be tapped.
+
+A song name containing "by" or "from", like "Stand by Me", loses that word from
+the search.
 
 ### Shopping list
 

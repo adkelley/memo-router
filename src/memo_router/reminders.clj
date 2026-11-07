@@ -22,11 +22,17 @@
     [(str (.atStartOfDay due)) "true"]
     [(str due) "false"]))
 
-(defn reminder-command [config {:keys [title body priority due]}]
+(defn- notes-text
+  "The reminder's notes: the body, then the link after a blank line."
+  [body link]
+  (cond-> (or body "")
+    link (str "\n\n" link)))
+
+(defn reminder-command [config {:keys [title body priority due link]}]
   (let [bin (:bin config "/usr/bin/osascript")
         account (:account config "")
         list (:list config "")]
-    (cond-> [bin "-l" "JavaScript" "-e" script account list title (or body "")
+    (cond-> [bin "-l" "JavaScript" "-e" script account list title (notes-text body link)
              (str (or priority ""))]
       due (into (due-args due)))))
 

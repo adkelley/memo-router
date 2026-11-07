@@ -86,8 +86,9 @@
    :reminders {:bin     (fake-osascript! (fs/path dir "reminders") reminders-exit)
                :account "iCloud"
                :list    "Inbox"
-               :routes  {"Home" {:list "Home"}
-                         "GCA"  {:account "GCA" :list "Tasks"}}}
+               :routes  {"Home"    {:list "Home"}
+                         "GCA"     {:account "GCA" :list "Tasks"}
+                         "Spotify" {:list "Spotify" :link :spotify}}}
    :notes     {:bin     (fake-osascript! (fs/path dir "notes") notes-exit)
                :account "iCloud"
                :folder  "Notes"
@@ -179,6 +180,17 @@
         (add-memo! dir "2026-11-01/09-00-00.m4a" "Remind me to call Dana, high priority.")
         (core/process-memo! config false "2026-11-01/09-00-00.m4a")
         (is (= ["iCloud | Inbox | Call Dana | Remind me to call Dana, high priority. | 1"]
+               (calls (fs/path dir "reminders")))))))
+
+  (testing "a route with :link adds the link to the reminder's notes"
+    (fs/with-temp-dir [dir {}]
+      (let [config (test-config dir)]
+        (add-memo! dir "2026-11-01/09-00-00.m4a" "Spotify list, remind me to look into Pink Floyd.")
+        (core/process-memo! config false "2026-11-01/09-00-00.m4a")
+        (is (= [(str "iCloud | Spotify | Look into Pink Floyd | "
+                     "Spotify list, remind me to look into Pink Floyd.")
+                ""
+                "https://open.spotify.com/search/Pink%20Floyd | "]
                (calls (fs/path dir "reminders")))))))
 
   (testing "a route's own account replaces the top-level one"
