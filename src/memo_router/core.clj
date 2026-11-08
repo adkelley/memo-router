@@ -2,6 +2,7 @@
   (:require
    [babashka.fs :as fs]
    [memo-router.classify :as classify]
+   [memo-router.cleanup :as cleanup]
    [memo-router.config :as config]
    [memo-router.due :as due]
    [memo-router.inbox :as inbox]
@@ -11,7 +12,8 @@
    [memo-router.reminders :as reminders]
    [memo-router.whisper :as whisper]
    [memo-router.manifest :as manifest])
-  (:import (java.time LocalDateTime)))
+  (:import (java.time LocalDateTime)
+           (java.time LocalDate)))
 
 (def cli-spec
   {:config-path  {:desc "Path to config.edn" :default "config.edn"}
@@ -85,6 +87,30 @@
     (if (manifest/unmark-processed! manifest memo)
       (println memo "will be processed on the next run")
       (println memo "is not in the manifest"))))
+
+(defn clean
+  "Moves processed memos recorded more than --days days ago to the Trash, then
+  removes date folders left empty. With --dry-run, only lists them."
+  {:org.babashka/cli {:spec (assoc (select-keys cli-spec [:config-path :dry-run])
+                                   :days {:desc "Keep memos recorded within this many days"
+                                          :coerce :long
+                                          :default 7})}}
+  [{:keys [config-path dry-run days trash-dir]
+    :or   {trash-dir (str (fs/path (fs/home) ".Trash"))}}]
+  (let [{:keys [memo-dir manifest]} (config/load-config config-path)
+        memos (cleanup/old-memos (inbox/memo-files memo-dir)
+                                 (manifest/read-processed manifest)
+                                 (LocalDate/now)
+                                 days)]
+    (doseq [memo memos]
+      (when-not dry-run
+        (cleanup/trash! memo-dir memo trash-dir))
+      (println (if dry-run "would move" "moved") memo))
+    (if dry-run
+      (println (count memos) "memos would move to the Trash,"
+               (count (cleanup/empty-dirs memo-dir)) "empty folders would be removed")
+      (println (count memos) "memos moved to the Trash,"
+               (cleanup/remove-empty-dirs! memo-dir) "empty folders removed"))))
 
 (defn -main
   {:org.babashka/cli {:spec cli-spec}}

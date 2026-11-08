@@ -35,6 +35,8 @@ Each stage works on its own and has tests that mock its external tool.
   failed memo is logged and retried on the next run while the others continue
 - `bb re-process <memo>` removes a memo from the manifest, so the next run
   handles it again
+- `bb clean` moves processed memos older than `--days` (7) to the Trash and
+  removes empty date folders, with `--dry-run` to preview it
 - launchd job from a template, managed with the `bb agent:*` tasks
 - Test runner (`bb test`), formatter (`bb fmt`) and linter (`bb lint`) tasks
 - GitHub Actions CI: format check, lint and tests on every push

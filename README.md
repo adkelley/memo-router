@@ -110,6 +110,36 @@ the manifest. It does not touch the original reminder or note, so if that still
 exists, you will end up with two. Deleting a reminder or note never changes the
 manifest either, so processing a memo again is always your choice.
 
+### Cleaning out old memos
+
+`bb clean` moves processed memos recorded more than 7 days ago to the Trash, so
+they stop piling up in Just Press Record's iCloud folder. It then removes any
+date folders left empty. Run it by hand; the LaunchAgent never does.
+
+```bash
+bb clean --dry-run
+bb clean
+bb clean --days 30
+```
+
+| Option | Meaning |
+|---|---|
+| `--dry-run` | List the memos that would move and count the empty folders, without changing anything. |
+| `--days <n>` | Keep memos recorded within the last n days. Defaults to 7. |
+| `--config-path <path>` | Config file to read, as for `bb process`. |
+
+Only memos in the manifest are moved, so a memo that failed and is waiting to be
+retried stays where it is. Age comes from the recording time in the memo's name,
+not the file's modified time, which iCloud changes when it syncs. The manifest
+isn't changed.
+
+Because the folder is in iCloud Drive, a memo moved on the Mac also disappears
+from Just Press Record on the iPhone, once the app is closed and reopened. Each
+memo goes into the Trash named after its date and time, e.g.
+`2026-10-31_11-23-32.m4a`. To restore one, drag it back into its date folder and
+rename it to the time alone, e.g. `11-23-32.m4a`. A cleaned memo can't be
+processed again unless you put it back.
+
 ### Routing notes to an account
 
 Start a note memo with a keyword from `:notes :routes` to send it to that

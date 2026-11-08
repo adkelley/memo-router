@@ -310,3 +310,46 @@
                                              :memo        "2026-11-01/10-00-00.m4a"}))
              "not in the manifest"))
         (is (= #{memo} (processed config)))))))
+
+(deftest clean-test
+  (let [old    "2020-01-01/09-00-00.m4a"
+        recent (str (LocalDate/now) "/09-00-00.m4a")
+        failed "2020-01-02/09-00-00.m4a"
+        setup! (fn [dir]
+                 (let [config (test-config dir)
+                       path   (str (fs/path dir "config.edn"))]
+                   (spit path (pr-str config))
+                   (doseq [memo [old recent failed]]
+                     (add-memo! dir memo "Remind me to call Dana."))
+                   (manifest/mark-processed! (:manifest config) old)
+                   (manifest/mark-processed! (:manifest config) recent)
+                   {:config config
+                    :opts   {:config-path path
+                             :days        7
+                             :trash-dir   (str (fs/create-dirs (fs/path dir "trash")))}}))
+        memo?  (fn [config memo] (fs/exists? (fs/path (:memo-dir config) memo)))]
+
+    (testing "with dry-run, lists the old processed memo and moves nothing"
+      (fs/with-temp-dir [dir {}]
+        (let [{:keys [config opts]} (setup! dir)
+              out (with-out-str (core/clean (assoc opts :dry-run true)))]
+          (is (str/includes? out (str "would move " old)))
+          (is (str/includes? out "1 memos would move to the Trash"))
+          (is (every? #(memo? config %) [old recent failed]))
+          (is (empty? (fs/list-dir (:trash-dir opts)))))))
+
+    (testing "moves only the old processed memo, and removes its empty folder"
+      (fs/with-temp-dir [dir {}]
+        (let [{:keys [config opts]} (setup! dir)]
+          (with-out-str (core/clean (assoc opts :dry-run false)))
+          (is (fs/exists? (fs/path (:trash-dir opts) "2020-01-01_09-00-00.m4a")))
+          (is (not (memo? config old)))
+          (is (not (fs/exists? (fs/path (:memo-dir config) "2020-01-01"))))
+          (is (memo? config recent))
+          (is (memo? config failed) "an unprocessed memo stays, however old"))))
+
+    (testing "leaves the manifest alone"
+      (fs/with-temp-dir [dir {}]
+        (let [{:keys [config opts]} (setup! dir)]
+          (with-out-str (core/clean (assoc opts :dry-run false)))
+          (is (= #{old recent} (processed config))))))))

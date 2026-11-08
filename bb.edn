@@ -14,6 +14,8 @@
                      :task (exec 'memo-router.core/-main)}
          re-process {:doc "Re-process a memo"
                      :task (exec 'memo-router.core/re-process)}
+         clean {:doc  "Move processed memos older than --days (7) to the Trash"
+                :task (exec 'memo-router.core/clean)}
 
          fmt     {:doc "Format code"
                   :task (shell "cljfmt" "fix" "src" "test" "scripts")}

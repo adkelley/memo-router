@@ -2,7 +2,7 @@
   (:require
    [babashka.fs :as fs]))
 
-(defn- memo-files
+(defn memo-files
   "Returns the .m4a files under dir as sorted paths relative to dir,
   e.g. (\"2026-10-31/11-23-32.m4a\")."
   [dir]
