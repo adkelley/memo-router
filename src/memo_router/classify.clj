@@ -43,7 +43,7 @@
   "The route for a reminder starting with a keyword from routes and \"list\", as
   in \"Home list, remind me to do the dishes\". See find-route."
   [routes text]
-  (find-route "\\s+lists?\\b" routes text))
+  (find-route "\\s*lists?\\b" routes text))
 
 (defn reminder? [text]
   (some? (re-find reminder-pattern text)))

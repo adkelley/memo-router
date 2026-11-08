@@ -43,7 +43,7 @@ holds machine-specific paths, so create it yourself with this shape:
 | `:whisper :model` | Hugging Face model used for transcription. Downloaded on first use into `~/.cache/huggingface/hub/`. |
 | `:reminders :account` | Optional. Reminders account (e.g. `"iCloud"`) that holds `:list`. Omit it to search all accounts, which is fine unless the same list name exists in more than one. |
 | `:reminders :list` | Optional. Reminders list for memos classified as reminders. Must match an existing list name exactly; omit it to use your default list. |
-| `:reminders :routes` | Optional. Map of spoken name to destination, `{:list "..." :account "..."}`, for sending a reminder to another list (see [Routing reminders to a list](#routing-reminders-to-a-list)). `:list` is required. Without `:account`, the route uses the top-level `:account`. Add `:link :spotify` to put a Spotify search link in the reminder's notes (see [Spotify links](#spotify-links)). |
+| `:reminders :routes` | Optional. Map of spoken name to destination, `{:list "..." :account "..."}`, for sending a reminder to another list (see [Routing reminders to a list](#routing-reminders-to-a-list)). `:list` is required. Without `:account`, the route uses the top-level `:account`. Add `:link :spotify` or `:link :goodreads` to put a search link in the reminder's notes (see [Links on reminders](#links-on-reminders)). |
 | `:notes :account` | Recommended. Notes account (e.g. `"iCloud"`) that notes are created in. Omit it to use Notes' default account, but that can change when accounts are added or the setting changes, so name it explicitly if you have work or client accounts. |
 | `:notes :folder` | Optional. Folder within that account for everything else. Must match an existing folder name exactly; omit it to use the account's default folder. Folder names can repeat across accounts, which is why the lookup is scoped to one account. |
 | `:notes :routes` | Optional. Map of spoken keyword to destination, `{:account "..." :folder "..."}`, for sending a note to another account (see [Routing notes to an account](#routing-notes-to-an-account)). `:account` is required. Without `:folder`, the note goes to that account's default folder, not the top-level `:folder`. |
@@ -172,7 +172,8 @@ This creates "Do the dishes" in the Home list, due tomorrow at 15:00. The name i
 matched at the start of the transcript, ignoring case, and can be followed by
 `:`, `,` or `.`. It is left out of the title, and the reminder's notes keep the
 full transcript. Naming a list is enough, so "Home list: do the dishes" works
-without "remind me to".
+without "remind me to". Whisper sometimes writes "lists", or joins the words as
+"Homelist", and both still count.
 
 A reminder that names no list goes to the top-level `:list`. A name that isn't in
 `:routes` isn't treated as a list, so "Garage list, remind me to sweep" becomes a
@@ -188,16 +189,24 @@ osascript -l JavaScript -e 'Application("Reminders").accounts().map(a => a.name(
 ```
 
 Whisper can mishear these phrases: "home list" sometimes comes through as
-"homeless", which won't match.
+"homeless", which won't match. Add an alias when it hears a name differently,
+such as `"Book"` alongside `"Books"` for "Booklist".
 
-### Spotify links
+### Links on reminders
 
-A route with `:link :spotify` adds a Spotify search link to each reminder's
-notes, so one tap opens the results:
+A route with `:link` adds a search link to each reminder's notes, so one tap
+opens the results. Reminders has a URL field too, but it can't be set from a
+script, so the link goes in the notes, where it can be tapped.
 
 ```clojure
 "Spotify" {:list "Spotify" :link :spotify}
+"Books"   {:list "Books" :link :goodreads}
 ```
+
+The search is the reminder's title, minus a leading verb, a kind word and "by".
+Each site has its own words for these, listed below.
+
+#### Spotify
 
 > Spotify list, remind me to look into the album Animals by Pink Floyd.
 
@@ -209,11 +218,27 @@ for" or "find", a kind word like "the album", "song", "artist" or "band", and
 
 The link searches everything, with no artist, album or song filter. Spotify's
 website understands a filter, but the iPhone app reads it as the search text, so
-the link would search for "albums". Reminders also has a URL field, but it can't
-be set from a script, so the link goes in the notes, where it can be tapped.
+the link would search for "albums". Searching everything also finds audiobooks.
 
 A song name containing "by" or "from", like "Stand by Me", loses that word from
 the search.
+
+#### Goodreads
+
+> Books list, remind me to read the book Dune by Frank Herbert.
+
+This creates "Read the book Dune by Frank Herbert", with
+`https://www.goodreads.com/search?q=Dune%20Frank%20Herbert` in its notes. The
+search leaves out a leading "read", "look into", "look up", "check out", "search
+for" or "find", "the book" or "the novel", and "by". The author stays in the
+search, as it helps Goodreads find the right book. "From" is kept, as in "Tales
+from Earthsea".
+
+#### Adding a site
+
+Each site is a small namespace, like `src/memo_router/goodreads.clj`, holding its
+words and its search URL, plus one `defmethod` in `links.clj`. The shared
+`search-terms` function does the rest.
 
 ### Shopping list
 

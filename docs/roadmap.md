@@ -25,9 +25,12 @@ Each stage works on its own and has tests that mock its external tool.
 - `reminders` – create a reminder in a named account and list through
   `osascript`, timed or all-day when it has a due date, with a priority when one
   is spoken, or the list chosen by a spoken prefix from `:reminders :routes`
-- `links` and `spotify` – a route with `:link :spotify` adds a Spotify search
-  link to the reminder's notes. `links/link` is a multimethod, so another service
-  is its own namespace and one `defmethod`
+- `links`, `spotify` and `goodreads` – a route with `:link :spotify` or
+  `:link :goodreads` adds a search link to the reminder's notes.
+  `search-terms` shares the work of picking the words to search for, and
+  `links/link` is a multimethod, so another site is its own namespace and one
+  `defmethod`
+- Route names match "lists" and "Homelist", as Whisper writes them
 - `notes` – create a note as escaped HTML in a named account and folder, or
   the account chosen by a spoken keyword from `:notes :routes`
 - `config` – load `config.edn` and report every problem before a run starts
@@ -129,8 +132,7 @@ sees the corrected text.
 ### Links on reminders
 
 - More services behind `links/link`, each in its own namespace with one
-  `defmethod`: book search links such as Goodreads
-  (`https://www.goodreads.com/search?q=…`) or Amazon, and Wikipedia
+  `defmethod`: Amazon books and Wikipedia
 - Direct Spotify links to the exact artist, album or song, through Spotify's Web
   API with a client ID and secret (the user has the Premium it requires). Search
   still works for Development Mode apps, at 10 results per request. The lookup

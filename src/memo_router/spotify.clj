@@ -1,19 +1,10 @@
 (ns memo-router.spotify
-  (:require [clojure.string :as str])
-  (:import (java.net URLEncoder)))
+  (:require [memo-router.search-terms :as terms]))
 
-(def ^:private lead-pattern
-  #"(?i)^(?:look into|look up|listen to|check out|search for|find)\s+")
-
-(def ^:private kind-pattern
-  #"(?i)^(?:the\s+)?(?:song|album|artist|track|band)\s+")
-
-(def ^:private by-pattern #"(?i)\s+(?:by|from)\s+")
-
-(defn- encode
-  "Encodes s for a URL path, with %20 rather than + for spaces."
-  [s]
-  (str/replace (URLEncoder/encode s "UTF-8") "+" "%20"))
+(def ^:private wording
+  {:verbs   ["look into" "look up" "listen to" "check out" "search for" "find"]
+   :kinds   ["song" "album" "artist" "track" "band"]
+   :joiners ["by" "from"]})
 
 (defn search-link
   "Returns a Spotify search link for a reminder title like \"Look into the album
@@ -24,9 +15,4 @@
   The link has no /artists, /albums or /tracks filter: the Spotify app on iPhone
   reads that last part of the path as the search text."
   [title]
-  (let [query (-> title
-                  (str/replace-first lead-pattern "")
-                  (str/replace-first kind-pattern "")
-                  (str/replace by-pattern " ")
-                  str/trim)]
-    (str "https://open.spotify.com/search/" (encode query))))
+  (str "https://open.spotify.com/search/" (terms/encode (terms/search-terms title wording))))
